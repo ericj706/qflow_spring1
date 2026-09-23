@@ -9,6 +9,7 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -65,7 +66,7 @@ public class data_change_logEntity extend BaseTime{
     @JoinColumn(name="user_id") 
     @ManyToOne 
     @Column(name = "user_id")
-    private Integer user_id;
+    private UsersEntity usersEntity;
 
     /*
      변경사유
