@@ -17,10 +17,24 @@ repositories {
 	mavenCentral()
 }
 
-dependencies {
+dependencies { // start.spring.io
+	// 의존성( dependencies ) { } 안에 프로젝트내 추가할 라이브러리 코드 -> 자동으로 라이브러리 설치
+	// 1. springboot
 	implementation 'org.springframework.boot:spring-boot-starter-webmvc'
-	testImplementation 'org.springframework.boot:spring-boot-starter-webmvc-test'
-	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+	// 2. MYSQL jdbc
+	runtimeOnly 'com.mysql:mysql-connector-j'
+	// 3. 롬복 
+	compileOnly 'org.projectlombok:lombok'
+  	annotationProcessor 'org.projectlombok:lombok'
+	// 4. JPA
+	implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+
+	// 5. Spring Reactive Web : HTTP 통신
+	implementation 'org.springframework.boot:spring-boot-starter-webflux'
+	// 6. XML 파싱
+	implementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-xml:2.22.2'
+	// 7. CSV 파싱
+	implementation 'com.opencsv:opencsv:5.12.0'
 }
 
 tasks.named('test') {
