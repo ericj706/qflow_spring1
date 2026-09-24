@@ -2,13 +2,17 @@ package springproject.model.entity;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
+import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
+import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 
 import lombok.AllArgsConstructor;
@@ -16,7 +20,6 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import springproject.model.entity.Users_Entity;
 
 @Entity
 @Table(name = "batches")
@@ -82,4 +85,9 @@ public class Batches_Entity extends BaseTime{
     // 데이터 출처
     @Column(name = "record_source", length = 20)
     private String recordSource;
+
+    // batch_id 연관관계------------------
+    @OneToMany(mappedBy = "batch_id", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    private List<Batches_Entity> batchesList = new ArrayList<>();
+    
 }

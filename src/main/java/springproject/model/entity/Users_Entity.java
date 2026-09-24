@@ -63,5 +63,5 @@ public class Users_Entity extends BaseTime{
     private List<Data_change_log_Entity> dataChangeLogList = new ArrayList<>();
 
     @OneToMany(mappedBy = "userEntity", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-private List<Filling_packaging_Entity> fillingPackagingList = new ArrayList<>();
+    private List<Filling_packaging_Entity> fillingPackagingList = new ArrayList<>();
 }
