@@ -24,7 +24,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor 
 @Builder
-public class Anomaly_event_Entity {
+public class Anomaly_event_Entity extends BaseTime{
 
     // 이상 발생번호 - PK
     @Id
@@ -116,7 +116,7 @@ public class Anomaly_event_Entity {
     // 조치 관리자번호 - FK → users.user_id
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "action_user_id", nullable = false)
-    private UsersEntity actionUser;
+    private Users_Entity actionUser;
 
 
     // 조치시간

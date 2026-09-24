@@ -18,7 +18,7 @@ import lombok.NoArgsConstructor;
 @Entity 
 @Table (name = "bulk_qc")
 @AllArgsConstructor @NoArgsConstructor @Builder @Data 
-public class Bulk_qc_Entity {
+public class Bulk_qc_Entity extends BaseTime{
     // 검사번호 PK
     @Id 
     @Column(name = "qc_id", length = 50)

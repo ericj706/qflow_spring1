@@ -21,7 +21,7 @@ import lombok.NoArgsConstructor;
 @EntityListeners(AuditingEntityListener.class)
 
 @Table (name="data_change_log")
-public class Data_change_log_Entity{
+public class Data_change_log_Entity extends BaseTime{
 
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "change_id")

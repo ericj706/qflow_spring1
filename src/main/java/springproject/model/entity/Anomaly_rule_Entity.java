@@ -19,7 +19,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor 
 @AllArgsConstructor 
 @Builder 
-public class Anomaly_rule_Entity {
+public class Anomaly_rule_Entity extends BaseTime {
     
     // 규칙번호
     @Id

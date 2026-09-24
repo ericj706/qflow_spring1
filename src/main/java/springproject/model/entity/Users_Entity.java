@@ -1,10 +1,16 @@
 package springproject.model.entity;
 
+import java.util.ArrayList;
+import java.util.List;
+
+import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -39,4 +45,23 @@ public class Users_Entity extends BaseTime{
     // 계정상태
     @Column(name = "is_active")
     private Boolean isActive;
+
+    // PK연관관계--------------------
+    @OneToMany(mappedBy = "user_id", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    private List<Batches_Entity> batchesList = new ArrayList<>();
+
+    @OneToMany(mappedBy = "user_id", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    private List<Material_dispensing_Entity> materialDispensingList = new ArrayList<>();
+
+    @OneToMany(mappedBy = "user_id", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    private List<Bulk_qc_Entity> bulkQcList = new ArrayList<>();
+
+    @OneToMany(mappedBy = "actionUser", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    private List<Anomaly_event_Entity> anomalyEventList = new ArrayList<>();
+
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    private List<Data_change_log_Entity> dataChangeLogList = new ArrayList<>();
+
+    @OneToMany(mappedBy = "userEntity", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+private List<Filling_packaging_Entity> fillingPackagingList = new ArrayList<>();
 }

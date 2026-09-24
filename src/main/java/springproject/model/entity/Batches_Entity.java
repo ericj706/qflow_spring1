@@ -24,7 +24,7 @@ import springproject.model.entity.Users_Entity;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class Batches_Entity {
+public class Batches_Entity extends BaseTime{
     // 생산 LOT 번호 (VARCHAR(30), PK)
     @Id
     @Column(name = "batch_id", length = 30)
@@ -73,7 +73,7 @@ public class Batches_Entity {
     // 담당자
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id")
-    private Users_Entity userEntity;
+    private Users_Entity usersEntity;
 
     // 제조 탱크번호
     @Column(name = "tank_id", length = 30)

@@ -18,7 +18,7 @@ import lombok.NoArgsConstructor;
 @Entity 
 @Table (name = "filling_packaging")
 @NoArgsConstructor @AllArgsConstructor @Builder @Data 
-public class Filling_packaging_Entity {
+public class Filling_packaging_Entity extends BaseTime{
     @Id 
     @Column (name = "pouch_id", length = 100)
     private String pouch_id;

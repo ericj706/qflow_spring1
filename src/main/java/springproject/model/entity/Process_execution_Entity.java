@@ -20,7 +20,7 @@ import lombok.NoArgsConstructor;
 @Entity 
 @Table (name = "process_execution")
 @NoArgsConstructor @AllArgsConstructor @Builder @Data 
-public class Process_execution_Entity {
+public class Process_execution_Entity extends BaseTime{
     @Id 
     @GeneratedValue (strategy = GenerationType.IDENTITY)
     @Column(name = "execution_id")

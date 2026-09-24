@@ -22,7 +22,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class Material_dispensing_Entity {
+public class Material_dispensing_Entity extends BaseTime{
     // 칭량번호 (VARCHAR(100), PK)
     @Id
     @Column(name = "dispense_id", length = 100)
@@ -56,7 +56,7 @@ public class Material_dispensing_Entity {
     // 담당자 (user_id, FK -> users 테이블)
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id")
-    private Users_Entity userEntity;
+    private Users_Entity usersEntity;
 
     // 칭량시간 (DATETIME(3))
     @Column(name = "dispensed_at")
