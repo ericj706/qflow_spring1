@@ -20,7 +20,7 @@ import lombok.NoArgsConstructor;
 @Entity 
 @Table (name = "process_execution")
 @NoArgsConstructor @AllArgsConstructor @Builder @Data 
-public class Process_executionEntity {
+public class Process_execution_Entity {
     @Id 
     @GeneratedValue (strategy = GenerationType.IDENTITY)
     @Column(name = "execution_id")
@@ -29,7 +29,7 @@ public class Process_executionEntity {
     // fk 설정
     @ManyToOne
     @JoinColumn (name = "batch_id")
-    private BatchesEntity batchesEntity;
+    private Batches_Entity batchesEntity;
 
     @Column(name = "process_code", length = 30)
     private String process_code;

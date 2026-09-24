@@ -24,7 +24,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor 
 @Builder
-public class Anomaly_eventEntity {
+public class Anomaly_event_Entity {
 
     // 이상 발생번호 - PK
     @Id
@@ -36,21 +36,21 @@ public class Anomaly_eventEntity {
     // 생산 LOT 번호 - FK → batches.batch_id
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "batch_id", nullable = false)
-    private BatchesEntity batch;
+    private Batches_Entity batch;
 
 
     // 개별 제품번호 - FK → filling_packaging.pouch_id
     // NULL 허용
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "pouch_id", nullable = true)
-    private Filling_packagingEntity pouch;
+    private Filling_packaging_Entity pouch;
 
 
     // 규칙번호 - FK → anomaly_rule.rule_id
     // NULL 허용
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "rule_id", nullable = true)
-    private Anomaly_ruleEntity anomalyRule;
+    private Anomaly_rule_Entity anomalyRule;
 
 
     // 원본 알람번호 - UNIQUE, NULL 허용

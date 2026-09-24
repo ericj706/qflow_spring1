@@ -18,7 +18,7 @@ import lombok.NoArgsConstructor;
 @Entity 
 @Table (name = "bulk_qc")
 @AllArgsConstructor @NoArgsConstructor @Builder @Data 
-public class Bulk_qcEntity {
+public class Bulk_qc_Entity {
     // 검사번호 PK
     @Id 
     @Column(name = "qc_id", length = 50)
@@ -27,7 +27,7 @@ public class Bulk_qcEntity {
     // 생산 LOT 번호 FK
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "batch_id")
-    private BatchesEntity batchesEntity;
+    private Batches_Entity batchesEntity;
 
     // 검사시간
     @Column(name = "sample_time", columnDefinition = "DATETIME(3)")
@@ -36,7 +36,7 @@ public class Bulk_qcEntity {
     // 담당자 FK
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id")
-    private UsersEntity usersEntity;
+    private Users_Entity usersEntity;
 
     // 측정 pH
     @Column(name = "ph_measured", precision = 6, scale = 3)

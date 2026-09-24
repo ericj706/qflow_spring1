@@ -18,7 +18,7 @@ import lombok.NoArgsConstructor;
 @Entity 
 @Table (name = "filling_packaging")
 @NoArgsConstructor @AllArgsConstructor @Builder @Data 
-public class Filling_packagingEntity {
+public class Filling_packaging_Entity {
     @Id 
     @Column (name = "pouch_id", length = 100)
     private String pouch_id;
@@ -26,12 +26,12 @@ public class Filling_packagingEntity {
     // 생산 LOT 번호 FK
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "batch_id")
-    private BatchesEntity batchesEntity;
+    private Batches_Entity batchesEntity;
 
     // 담당자 FK
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id")
-    private UsersEntity usersEntity;
+    private Users_Entity usersEntity;
 
     // 포장라인
     @Column(name = "packaging_line", length = 40)

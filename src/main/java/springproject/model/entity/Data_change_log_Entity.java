@@ -21,7 +21,7 @@ import lombok.NoArgsConstructor;
 @EntityListeners(AuditingEntityListener.class)
 
 @Table (name="data_change_log")
-public class data_change_logEntity extend BaseTime{
+public class Data_change_log_Entity{
 
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "change_id")
@@ -66,7 +66,7 @@ public class data_change_logEntity extend BaseTime{
     @JoinColumn(name="user_id") 
     @ManyToOne 
     @Column(name = "user_id")
-    private UsersEntity usersEntity;
+    private Users_Entity usersEntity;
 
     /*
      변경사유

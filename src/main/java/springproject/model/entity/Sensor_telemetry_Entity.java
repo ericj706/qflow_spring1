@@ -20,7 +20,7 @@ import lombok.NoArgsConstructor;
 @Entity 
 @Table (name = "sensor_telemetry")
 @NoArgsConstructor @AllArgsConstructor @Builder @Data 
-public class Sensor_telemetryEntity {
+public class Sensor_telemetry_Entity {
     @Id 
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "sensor_id")
@@ -28,7 +28,7 @@ public class Sensor_telemetryEntity {
 
     @ManyToOne 
     @JoinColumn (name = "execution_id", referencedColumnName = "execution_id")
-    private Process_executionEntity process_ExecutionEntity;
+    private Process_execution_Entity process_ExecutionEntity;
 
     @Column(name = "timestamp", columnDefinition = "DATETIME(3)")
     private LocalDateTime timestamp;
@@ -59,5 +59,5 @@ public class Sensor_telemetryEntity {
 
     @ManyToOne
     @JoinColumn(name = "user_id", referencedColumnName = "user_id")
-    private UsersEntity usersEntity;
+    private Users_Entity usersEntity;
 }

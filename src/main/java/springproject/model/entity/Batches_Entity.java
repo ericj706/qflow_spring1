@@ -24,7 +24,7 @@ import springproject.model.entity.Users_Entity;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class Batch_Entity {
+public class Batches_Entity {
     // 생산 LOT 번호 (VARCHAR(30), PK)
     @Id
     @Column(name = "batch_id", length = 30)

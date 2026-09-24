@@ -22,7 +22,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class Material_Dispensing_Entity {
+public class Material_dispensing_Entity {
     // 칭량번호 (VARCHAR(100), PK)
     @Id
     @Column(name = "dispense_id", length = 100)
@@ -31,7 +31,7 @@ public class Material_Dispensing_Entity {
     // 생산 LOT 번호 (batch_id, FK -> batches 테이블)
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "batch_id")
-    private Batch_Entity batchEntity;
+    private Batches_Entity batchEntity;
 
     // 원료코드 (VARCHAR(40))
     @Column(name = "material_code", length = 40)
