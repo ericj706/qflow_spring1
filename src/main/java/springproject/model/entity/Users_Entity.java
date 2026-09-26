@@ -15,6 +15,7 @@ import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
 import lombok.ToString;
 
@@ -77,4 +78,9 @@ public class Users_Entity extends BaseTime{
     @ToString.Exclude
     @Builder.Default
     private List<Filling_packaging_Entity> fillingPackagingList = new ArrayList<>();
+
+    @OneToMany(mappedBy = "usersEntity", fetch = FetchType.LAZY)
+    @ToString.Exclude
+    @Builder.Default
+    private List<Sensor_telemetry_Entity> sensorTelemetryList = new ArrayList<>();
 }
