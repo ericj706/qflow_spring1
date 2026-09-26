@@ -48,17 +48,17 @@ public class Users_Entity extends BaseTime{
     private Boolean isActive;
 
     // PK연관관계--------------------
-    @OneToMany(mappedBy = "user_id", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @OneToMany(mappedBy = "usersEntity", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     @ToString.Exclude
     @Builder.Default
     private List<Batches_Entity> batchesList = new ArrayList<>();
 
-    @OneToMany(mappedBy = "user_id", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @OneToMany(mappedBy = "usersEntity", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     @ToString.Exclude
     @Builder.Default
     private List<Material_dispensing_Entity> materialDispensingList = new ArrayList<>();
 
-    @OneToMany(mappedBy = "user_id", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @OneToMany(mappedBy = "usersEntity", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     @ToString.Exclude
     @Builder.Default
     private List<Bulk_qc_Entity> bulkQcList = new ArrayList<>();
@@ -73,7 +73,7 @@ public class Users_Entity extends BaseTime{
     @Builder.Default
     private List<Data_change_log_Entity> dataChangeLogList = new ArrayList<>();
 
-    @OneToMany(mappedBy = "userEntity", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @OneToMany(mappedBy = "usersEntity", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     @ToString.Exclude
     @Builder.Default
     private List<Filling_packaging_Entity> fillingPackagingList = new ArrayList<>();

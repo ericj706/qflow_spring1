@@ -18,6 +18,7 @@ import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
 import lombok.ToString;
 
@@ -87,10 +88,33 @@ public class Batches_Entity extends BaseTime{
     @Column(name = "record_source", length = 20)
     private String recordSource;
 
-    // batch_id 연관관계------------------
-    @OneToMany(mappedBy = "batches_Entity", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    // 원료 칭량이력
+    @OneToMany(mappedBy = "batchEntity", fetch = FetchType.LAZY)
     @ToString.Exclude
     @Builder.Default
-    private List<Batches_Entity> batchesList = new ArrayList<>();
-    
+    private List<Material_dispensing_Entity> materialDispensingList =new ArrayList<>();
+
+    // 공정 실행이력
+    @OneToMany(mappedBy = "batchesEntity", fetch = FetchType.LAZY)
+    @ToString.Exclude
+    @Builder.Default
+    private List<Process_execution_Entity> processExecutionList =new ArrayList<>();
+
+    // 벌크 품질검사
+    @OneToMany(mappedBy = "batchesEntity", fetch = FetchType.LAZY)
+    @ToString.Exclude
+    @Builder.Default
+    private List<Bulk_qc_Entity> bulkQcList =new ArrayList<>();
+
+    // 충진·포장 및 최종검사
+    @OneToMany(mappedBy = "batchesEntity", fetch = FetchType.LAZY)
+    @ToString.Exclude
+    @Builder.Default
+    private List<Filling_packaging_Entity> fillingPackagingList =new ArrayList<>();
+
+    // 이상 발생 및 조치 이력
+    @OneToMany(mappedBy = "batches_Entity", fetch = FetchType.LAZY)
+    @ToString.Exclude
+    @Builder.Default
+    private List<Anomaly_event_Entity> anomalyEventList =new ArrayList<>();
 }
