@@ -1,17 +1,23 @@
 package springproject.model.entity;
 
 import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.List;
 
+import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import lombok.ToString;
 
 @Entity 
 @Table(name = "anomaly_rule")
@@ -78,5 +84,10 @@ public class Anomaly_rule_Entity extends BaseTime {
     // 사용 여부
     @Column(name = "is_active")
     private Boolean isActive;
+
+    @OneToMany (mappedBy = "anomaly_rule_Entity", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @ToString.Exclude
+    @Builder.Default
+    private List<Anomaly_event_Entity> anomalyEventList = new ArrayList<>();  
 
 }

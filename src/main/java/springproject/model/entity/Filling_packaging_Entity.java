@@ -2,18 +2,23 @@ package springproject.model.entity;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
+import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
+import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import lombok.ToString;
 
 @Entity 
 @Table (name = "filling_packaging")
@@ -108,5 +113,11 @@ public class Filling_packaging_Entity extends BaseTime{
     // 데이터 출처
     @Column(name = "record_source", length = 20)
     private String record_source;
+
+    @OneToMany (mappedBy = "filling_packaging_Entity", cascade = CascadeType.ALL)
+    @ToString.Exclude
+    @Builder.Default
+    private List<Anomaly_event_Entity> anomalyEventList = new ArrayList<>();
+
     
 }

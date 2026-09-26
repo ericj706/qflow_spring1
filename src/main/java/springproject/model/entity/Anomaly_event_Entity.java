@@ -36,21 +36,21 @@ public class Anomaly_event_Entity extends BaseTime{
     // 생산 LOT 번호 - FK → batches.batch_id
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "batch_id", nullable = false)
-    private Batches_Entity batch;
+    private Batches_Entity batches_Entity;
 
 
     // 개별 제품번호 - FK → filling_packaging.pouch_id
     // NULL 허용
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "pouch_id", nullable = true)
-    private Filling_packaging_Entity pouch;
+    private Filling_packaging_Entity filling_packaging_Entity;
 
 
     // 규칙번호 - FK → anomaly_rule.rule_id
     // NULL 허용
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "rule_id", nullable = true)
-    private Anomaly_rule_Entity anomalyRule;
+    private Anomaly_rule_Entity anomaly_rule_Entity;
 
 
     // 원본 알람번호 - UNIQUE, NULL 허용
@@ -115,8 +115,8 @@ public class Anomaly_event_Entity extends BaseTime{
 
     // 조치 관리자번호 - FK → users.user_id
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "action_user_id", nullable = false)
-    private Users_Entity actionUser;
+    @JoinColumn(name = "user_id", nullable = false)
+    private Users_Entity users_Entity;
 
 
     // 조치시간

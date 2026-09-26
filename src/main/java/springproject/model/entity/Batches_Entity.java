@@ -19,6 +19,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import lombok.ToString;
 
 
 @Entity
@@ -87,7 +88,9 @@ public class Batches_Entity extends BaseTime{
     private String recordSource;
 
     // batch_id 연관관계------------------
-    @OneToMany(mappedBy = "batch_id", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @OneToMany(mappedBy = "batches_Entity", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @ToString.Exclude
+    @Builder.Default
     private List<Batches_Entity> batchesList = new ArrayList<>();
     
 }
