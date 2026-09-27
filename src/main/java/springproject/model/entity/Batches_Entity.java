@@ -89,7 +89,7 @@ public class Batches_Entity extends BaseTime{
     private String recordSource;
 
     // 원료 칭량이력
-    @OneToMany(mappedBy = "batchEntity", fetch = FetchType.LAZY)
+    @OneToMany(mappedBy = "batchesEntity", fetch = FetchType.LAZY)
     @ToString.Exclude
     @Builder.Default
     private List<Material_dispensing_Entity> materialDispensingList =new ArrayList<>();
