@@ -17,13 +17,13 @@ public class Users_Controller {
     private final Users_Service us;
 
     // 전체조회
-    @GetMapping 
+    @GetMapping ("")
     public List<Users_Dto> findAll(){
         return us.findAll();
     }
 
     // 개별조회
-    @GetMapping 
+    @GetMapping ("/{userId}")
     public Users_Dto findOne(Integer userId){
         return us.findOne(userId);
     }

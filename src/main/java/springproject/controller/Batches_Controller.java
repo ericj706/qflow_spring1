@@ -12,7 +12,7 @@ import springproject.service.Batches_Service;
 
 @RestController 
 @RequiredArgsConstructor 
-@RequestMapping ("mask/batches")
+@RequestMapping ("/mask/batches")
 public class Batches_Controller {
     private final Batches_Service bs;
 
@@ -23,8 +23,8 @@ public class Batches_Controller {
     }
 
     // 개별조회
-    @GetMapping 
-    public Batches_Dto findOne(String batchesId){
-        return bs.findOne(batchesId);
+    @GetMapping ("/{batchId}")
+    public Batches_Dto findOne(String batchId){
+        return bs.findOne(batchId);
     }
 }
