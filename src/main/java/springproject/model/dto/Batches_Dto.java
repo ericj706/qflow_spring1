@@ -29,9 +29,9 @@ public class Batches_Dto {
     private String recordSource;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
-    
+
     // toEntity()
-    public Batches_Entity toEntity(){ //service계층에서 객체 주입할 예정
+    public Batches_Entity toEntity(Users_Entity usersEntity ){ //service계층에서 객체 주입할 예정
         return Batches_Entity.builder()
                 .batchId(this.batchId)
                 .productCode(this.productCode)
@@ -44,6 +44,7 @@ public class Batches_Dto {
                 .startTime(this.startTime)
                 .endTime(this.endTime)
                 .status(this.status)
+                .usersEntity(usersEntity)
                 .tankId(this.tankId)
                 .recordSource(this.recordSource).build();
     }
