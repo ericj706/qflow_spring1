@@ -32,7 +32,7 @@ public class Material_dispensing_Dto {
             Users_Entity usersEntity) {
         return Material_dispensing_Entity.builder()
                 .dispenseId(this.dispenseId)
-                .batchEntity(batchEntity)
+                .batchesEntity(batchEntity)
                 .materialCode(this.materialCode)
                 .materialName(this.materialName)
                 .rawMaterialLot(this.rawMaterialLot)
@@ -51,8 +51,8 @@ public class Material_dispensing_Dto {
         return Material_dispensing_Dto.builder()
                 .dispenseId(entity.getDispenseId())
                 .batchId(
-                        entity.getBatchEntity() == null
-                                ? null : entity.getBatchEntity().getBatchId())
+                        entity.getBatchesEntity() == null
+                                ? null : entity.getBatchesEntity().getBatchId())
                 .materialCode(entity.getMaterialCode())
                 .materialName(entity.getMaterialName())
                 .rawMaterialLot(entity.getRawMaterialLot())
