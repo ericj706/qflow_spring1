@@ -21,8 +21,8 @@ public class Material_dispensing_Controller {
         return ms.findAll();
     }
 
-    @GetMapping 
-    public Material_dispensing_Dto findOnd(String materialId){
-        return ms.findOne(materialId);
+    @GetMapping ("{/{dispenseId}")
+    public Material_dispensing_Dto findOnd(String dispenseId){
+        return ms.findOne(dispenseId);
     }
 }

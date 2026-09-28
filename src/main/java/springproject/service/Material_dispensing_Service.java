@@ -25,8 +25,8 @@ public class Material_dispensing_Service {
 
     // 단건 조회
     @Transactional(readOnly = true)
-    public Material_dispensing_Dto findOne(String materialId) {
-        return mr.findById(materialId)
+    public Material_dispensing_Dto findOne(String dispenseId) {
+        return mr.findById(dispenseId)
                 .map(Material_dispensing_Dto::from)
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 ID"));
     }

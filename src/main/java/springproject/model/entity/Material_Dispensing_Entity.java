@@ -31,7 +31,7 @@ public class Material_dispensing_Entity extends BaseTime{
     // 생산 LOT 번호 (batch_id, FK -> batches 테이블)
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "batch_id")
-    private Batches_Entity batchEntity;
+    private Batches_Entity batchesEntity;
 
     // 원료코드 (VARCHAR(40))
     @Column(name = "material_code", length = 40)

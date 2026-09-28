@@ -8,8 +8,8 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import springproject.model.entity.Batches_Entity;
-import springproject.model.entity.Users_Entity;
 import springproject.model.entity.Material_dispensing_Entity;
+import springproject.model.entity.Users_Entity;
 
 @NoArgsConstructor @AllArgsConstructor @Builder @Data 
 public class Material_dispensing_Dto {
@@ -32,7 +32,7 @@ public class Material_dispensing_Dto {
             Users_Entity usersEntity) {
         return Material_dispensing_Entity.builder()
                 .dispenseId(this.dispenseId)
-                .batchEntity(batchesEntity)
+                .batchesEntity(batchesEntity)
                 .materialCode(this.materialCode)
                 .materialName(this.materialName)
                 .rawMaterialLot(this.rawMaterialLot)
@@ -51,8 +51,8 @@ public class Material_dispensing_Dto {
         return Material_dispensing_Dto.builder()
                 .dispenseId(entity.getDispenseId())
                 .batchId(
-                        entity.getBatchEntity() == null
-                                ? null : entity.getBatchEntity().getBatchId())
+                        entity.getBatchesEntity() == null
+                                ? null : entity.getBatchesEntity().getBatchId())
                 .materialCode(entity.getMaterialCode())
                 .materialName(entity.getMaterialName())
                 .rawMaterialLot(entity.getRawMaterialLot())
