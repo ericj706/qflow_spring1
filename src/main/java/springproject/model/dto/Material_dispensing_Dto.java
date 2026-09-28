@@ -26,40 +26,32 @@ public class Material_dispensing_Dto {
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
-    // DTO → Entity
-    public Material_dispensing_Entity toEntity(
-            Batches_Entity batchEntity,
-            Users_Entity usersEntity) {
+    // toEntity
+    public Material_dispensing_Entity toEntity() {
         return Material_dispensing_Entity.builder()
                 .dispenseId(this.dispenseId)
-                .batchEntity(batchEntity)
                 .materialCode(this.materialCode)
                 .materialName(this.materialName)
                 .rawMaterialLot(this.rawMaterialLot)
                 .targetQtyKg(this.targetQtyKg)
                 .actualQtyKg(this.actualQtyKg)
-                .usersEntity(usersEntity)
                 .dispensedAt(this.dispensedAt)
                 .status(this.status)
                 .build();
     }
 
-    // Entity → DTO
-    public static Material_dispensing_Dto from(
-            Material_dispensing_Entity entity) {
-                
+    // from
+    public static Material_dispensing_Dto from(Material_dispensing_Entity entity) {
         return Material_dispensing_Dto.builder()
                 .dispenseId(entity.getDispenseId())
-                .batchId(
-                        entity.getBatchEntity() == null
+                .batchId(entity.getBatchEntity() == null
                                 ? null : entity.getBatchEntity().getBatchId())
                 .materialCode(entity.getMaterialCode())
                 .materialName(entity.getMaterialName())
                 .rawMaterialLot(entity.getRawMaterialLot())
                 .targetQtyKg(entity.getTargetQtyKg())
                 .actualQtyKg(entity.getActualQtyKg())
-                .userId(
-                        entity.getUsersEntity() == null
+                .userId(entity.getUsersEntity() == null
                                 ? null : entity.getUsersEntity().getUserId())
                 .dispensedAt(entity.getDispensedAt())
                 .status(entity.getStatus())
