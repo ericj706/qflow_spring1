@@ -10,6 +10,7 @@ import springproject.service.Bulk_qc_Service;
 import java.util.List;
 
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestParam;
 
 
@@ -26,6 +27,11 @@ public class Bulk_qc_Controller {
     
 
     // 개별 조회 (PK) 
+    @GetMapping("/{qc_id}")
+    public Bulk_qc_Dto findOne(@PathVariable (name = "qc_id") String qc_id) {
+        return bulk_qc_Service.findOne(qc_id);
+    }
+    
 
     
 }
