@@ -3,6 +3,7 @@ package springproject.controller;
 import java.util.List;
 
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -24,7 +25,7 @@ public class Users_Controller {
 
     // 개별조회
     @GetMapping ("/{userId}")
-    public Users_Dto findOne(Integer userId){
+    public Users_Dto findOne(@PathVariable(name = "userId") Integer userId){
         return us.findOne(userId);
     }
 }
