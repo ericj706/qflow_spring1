@@ -28,5 +28,13 @@ public class Bulk_qc_Service {
     }
 
     // 개별 조회 PK
+    public Bulk_qc_Dto findOne(String qc_id){
+        Optional<Bulk_qc_Entity> optional = bulk_qc_Repository.findById(qc_id);
+        if(optional.isPresent()){
+            Bulk_qc_Entity bulk_qc_Entity = optional.get();
+            return Bulk_qc_Dto.from(bulk_qc_Entity);
+        }
+        return null;
+    }   
     
 }
