@@ -9,6 +9,7 @@ import springproject.service.Bulk_qc_Service;
 
 import java.util.List;
 
+import org.springframework.data.domain.Page;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -19,10 +20,40 @@ import org.springframework.web.bind.annotation.RequestParam;
 public class Bulk_qc_Controller {
     private final Bulk_qc_Service bulk_qc_Service;
 
-    // 전체 조회
-    @GetMapping("")
-    public List<Bulk_qc_Dto> findAll() {
-        return bulk_qc_Service.findAll();
+    // 전체조회 + 조건검색 + 페이징
+    @GetMapping
+    public BulkQcPageResponse findAll(
+            @RequestParam(name = "batchId", required = false)
+            String batchId,
+
+            @RequestParam(name = "userId", required = false)
+            Integer userId,
+
+            @RequestParam(name = "page", defaultValue = "0")
+            int page,
+
+            @RequestParam(name = "size", defaultValue = "10")
+            int size) {
+
+        Page<Bulk_qc_Dto> result =
+                bulk_qc_Service.search(batchId, userId, page, size);
+
+        return new BulkQcPageResponse(
+                result.getContent(),
+                result.getNumber(),
+                result.getSize(),
+                result.getTotalElements(),
+                result.getTotalPages()
+        );
+    }
+
+    // 목록과 페이지 정보를 담는 응답 DTO
+    public record BulkQcPageResponse(
+            List<Bulk_qc_Dto> content,
+            int page,
+            int size,
+            long totalElements,
+            int totalPages) {
     }
     
 
