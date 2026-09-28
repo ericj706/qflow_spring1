@@ -12,7 +12,7 @@ import springproject.model.dto.Data_change_log_Dto;
 import springproject.service.Data_change_log_Service;
 
 @RestController @RequiredArgsConstructor 
-@RequestMapping ("/api/data_change_logs")
+@RequestMapping ("/api/data-change-logs")
 public class Data_change_log_Controller {
     private final Data_change_log_Service data_change_log_Service;
 

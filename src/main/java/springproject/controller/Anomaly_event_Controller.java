@@ -12,7 +12,7 @@ import springproject.model.dto.Anomaly_event_Dto;
 import springproject.service.Anomaly_event_Service;
 
 @RestController @RequiredArgsConstructor 
-@RequestMapping ("/api/anomaly_events")
+@RequestMapping ("/api/anomaly-events")
 public class Anomaly_event_Controller {
     private final Anomaly_event_Service anomaly_event_Service;
 
