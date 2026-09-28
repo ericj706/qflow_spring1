@@ -10,7 +10,6 @@ import springproject.service.Bulk_qc_Service;
 import java.util.List;
 
 import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestParam;
 
 
 @RestController @RequestMapping ("/mask/bulk-qc")
