@@ -43,7 +43,7 @@ public class Bulk_qc_Service {
             page, 
             size, 
             Sort.by(
-                Sort.Order.desc("Sample_time"), 
+                Sort.Order.desc("sample_time"), 
                 Sort.Order.asc("qc_id")
             ) 
         );
@@ -51,17 +51,6 @@ public class Bulk_qc_Service {
         // Reposiotry에서 조회
         Page<Bulk_qc_Entity> entities = bulk_qc_Repository.search(batchId, userId, pageable);
         return  entities.map(Bulk_qc_Dto::from);
-    }
-
-    // 전체조회 
-    public List<Bulk_qc_Dto> findAll(){
-        List<Bulk_qc_Entity> bulk_qc_Entities = bulk_qc_Repository.findAll();
-        List<Bulk_qc_Dto> bulk_qc_Dtos = new ArrayList<>();
-        
-        for(Bulk_qc_Entity entity: bulk_qc_Entities){
-            bulk_qc_Dtos.add(Bulk_qc_Dto.from(entity));
-        }
-        return bulk_qc_Dtos;
     }
 
     // 개별 조회 PK
