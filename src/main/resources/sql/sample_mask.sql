@@ -8347,11 +8347,6 @@ INSERT INTO `sensor_telemetry` (`sensor_id`,`execution_id`,`timestamp`,`paddle_r
 (3323,18,'2023-01-12 22:12:39.397',17.70,0.00,2430.100,5.986,69.20,-89.520,0.00,'CSV_IMPORT',NULL),
 (3324,18,'2023-01-12 22:12:49.397',17.70,0.00,2428.600,5.968,68.90,-88.940,0.00,'CSV_IMPORT',NULL);
 
-INSERT INTO `anomaly_event` (`anomaly_id`,`batch_id`,`pouch_id`,`rule_id`,`source_alarm_id`,`process_code`,`anomaly_type`,`sensor_name`,`measured_value`,`severity`,`alarm_message`,`occurred_at`,`resolved_at`,`duration_sec`,`action_status`,`action_note`,`user_id`,`action_time`,`source_type`,`created_at`,`updated_at`) VALUES
-(2,'LOT20230112-003',NULL,NULL,'ALM_00002','OP_S02_HOMO_DISPERSE','WARN_TORQUE_HIGH','motor_torque_pct',NULL,'ALM_SEV_WARN','HOMOMIXER TORQUE EXCEEDED 42% (THICKENER LOADING SPIKE)','2023-01-12 19:55:29.396985',NULL,40,'ACKNOWLEDGED',NULL,5,NULL,'CSV_IMPORT',CURRENT_TIMESTAMP(6),CURRENT_TIMESTAMP(6));
-INSERT INTO `anomaly_event` (`anomaly_id`,`batch_id`,`pouch_id`,`rule_id`,`source_alarm_id`,`process_code`,`anomaly_type`,`sensor_name`,`measured_value`,`severity`,`alarm_message`,`occurred_at`,`resolved_at`,`duration_sec`,`action_status`,`action_note`,`user_id`,`action_time`,`source_type`,`created_at`,`updated_at`) VALUES
-(3,'LOT20230112-003','PKG_LOT20230112-003_001051',NULL,'ALM_00003','PACKAGING','ERR_METAL_DETECTED','metal_detector_status',NULL,'ALM_SEV_CRIT','METAL CONTAMINATION DETECTED ON POUCH (PKG_LOT20230112-003_001051) - INTERLOCK REJECTED','2023-01-12 23:14:36.896985',NULL,12,'ACKNOWLEDGED',NULL,5,NULL,'CSV_IMPORT',CURRENT_TIMESTAMP(6),CURRENT_TIMESTAMP(6));
-
 INSERT INTO anomaly_rule (
     process_code, anomaly_type, sensor_name, 
     condition_type, warning_min, warning_max,critical_min, 
@@ -8361,12 +8356,15 @@ INSERT INTO anomaly_rule (
 ) VALUES
 -- 1) 탱크 온도 과열 경보 규칙
 ('OP_S02_HEATING_MIX', 'TEMP_OVERHEAT', 'tank_temp_c', 'RANGE', 75.000, 80.000, 80.000, 95.000, NULL, 30, '탱크 온도 센서, 냉각 밸브 작동 상태', '가열 히터 차단 및 냉각수 수동 유입 실행', true, NOW(), NOW()),
-
 -- 2) 금속 이물 감지 규칙
 ('LINE_PKG_02', 'METAL_DETECTED', 'metal_detector_status', 'EQUAL', NULL, NULL, NULL, NULL, 'MD_REJECT', 0, '포장라인 금속검출기 이송 라인', '금속 이물질 발견에 따른 해당 파우치 자동 리젝트 및 인터록 발생', true, NOW(), NOW()),
-
 -- 3) 교반기 모터 토크 이상 경보 규칙
 ('OP_S02_HOMO_DISPERSE', 'WARN_TORQUE_HIGH', 'motor_torque_pct', 'GREATER_THAN', 40.000, 45.000, 45.000, 60.000, NULL, 15, '호모믹서 점도 과다 및 투입 점증제 유실 여부', '회전 속도(RPM) 단계적 감속 및 현장 작업자 조치 안내', true, NOW(), NOW());
+
+INSERT INTO `anomaly_event` (`anomaly_id`,`batch_id`,`pouch_id`,`rule_id`,`source_alarm_id`,`process_code`,`anomaly_type`,`sensor_name`,`measured_value`,`severity`,`alarm_message`,`occurred_at`,`resolved_at`,`duration_sec`,`action_status`,`action_note`,`user_id`,`action_time`,`source_type`,`created_at`,`updated_at`) VALUES
+(2,'LOT20230112-003',NULL,1,'ALM_00002','OP_S02_HOMO_DISPERSE','WARN_TORQUE_HIGH','motor_torque_pct',NULL,'ALM_SEV_WARN','HOMOMIXER TORQUE EXCEEDED 42% (THICKENER LOADING SPIKE)','2023-01-12 19:55:29.396985',NULL,40,'ACKNOWLEDGED',NULL,5,NULL,'CSV_IMPORT',CURRENT_TIMESTAMP(6),CURRENT_TIMESTAMP(6));
+INSERT INTO `anomaly_event` (`anomaly_id`,`batch_id`,`pouch_id`,`rule_id`,`source_alarm_id`,`process_code`,`anomaly_type`,`sensor_name`,`measured_value`,`severity`,`alarm_message`,`occurred_at`,`resolved_at`,`duration_sec`,`action_status`,`action_note`,`user_id`,`action_time`,`source_type`,`created_at`,`updated_at`) VALUES
+(3,'LOT20230112-003','PKG_LOT20230112-003_001051',NULL,'ALM_00003','PACKAGING','ERR_METAL_DETECTED','metal_detector_status',NULL,'ALM_SEV_CRIT','METAL CONTAMINATION DETECTED ON POUCH (PKG_LOT20230112-003_001051) - INTERLOCK REJECTED','2023-01-12 23:14:36.896985',NULL,12,'ACKNOWLEDGED',NULL,5,NULL,'CSV_IMPORT',CURRENT_TIMESTAMP(6),CURRENT_TIMESTAMP(6));
 
 INSERT INTO data_change_log (
     table_name, record_id, column_name, old_value, 
