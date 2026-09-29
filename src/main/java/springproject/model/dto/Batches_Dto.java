@@ -10,7 +10,8 @@ import lombok.NoArgsConstructor;
 import springproject.model.entity.Batches_Entity;
 import springproject.model.entity.Users_Entity;
 
-@NoArgsConstructor @AllArgsConstructor @Builder @Data 
+@Data 
+@NoArgsConstructor @AllArgsConstructor @Builder
 public class Batches_Dto {
     private String batchId;
     private String productCode;
@@ -29,8 +30,8 @@ public class Batches_Dto {
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
-    // DTO → Entity
-    public Batches_Entity toEntity(Users_Entity usersEntity){
+    // toEntity()
+    public Batches_Entity toEntity(Users_Entity usersEntity ){ //service계층에서 객체 주입할 예정
         return Batches_Entity.builder()
                 .batchId(this.batchId)
                 .productCode(this.productCode)
@@ -48,7 +49,7 @@ public class Batches_Dto {
                 .recordSource(this.recordSource).build();
     }
 
-     // Entity → DTO
+     // from()
     public static Batches_Dto from(Batches_Entity entity) {
         return Batches_Dto.builder()
                 .batchId(entity.getBatchId())
@@ -62,7 +63,7 @@ public class Batches_Dto {
                 .startTime(entity.getStartTime())
                 .endTime(entity.getEndTime())
                 .status(entity.getStatus())
-                .userId(
+                .userId( //비어있으면 null 줌(UsersEntity가 비어있을 경우 exception 방지).
                         entity.getUsersEntity() == null
                                 ? null : entity.getUsersEntity().getUserId()
                 )

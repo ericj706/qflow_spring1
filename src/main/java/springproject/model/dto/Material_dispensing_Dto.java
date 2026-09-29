@@ -28,11 +28,11 @@ public class Material_dispensing_Dto {
 
     // DTO → Entity
     public Material_dispensing_Entity toEntity(
-            Batches_Entity batchEntity,
+            Batches_Entity batchesEntity,
             Users_Entity usersEntity) {
         return Material_dispensing_Entity.builder()
                 .dispenseId(this.dispenseId)
-                .batchesEntity(batchEntity)
+                .batchesEntity(batchesEntity)
                 .materialCode(this.materialCode)
                 .materialName(this.materialName)
                 .rawMaterialLot(this.rawMaterialLot)
