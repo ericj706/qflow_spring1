@@ -2,6 +2,7 @@ package springproject.controller;
 
 import java.util.List;
 
+import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -14,6 +15,7 @@ import springproject.service.Users_Service;
 @RestController 
 @RequiredArgsConstructor 
 @RequestMapping ("/mask/users")
+@CrossOrigin (origins = "http://localhost:5173")
 public class Users_Controller {
     private final Users_Service us;
 

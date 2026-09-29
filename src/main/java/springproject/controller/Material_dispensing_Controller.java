@@ -2,6 +2,7 @@ package springproject.controller;
 
 import java.util.List;
 
+import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -13,6 +14,7 @@ import springproject.service.Material_dispensing_Service;
 @RestController 
 @RequiredArgsConstructor 
 @RequestMapping ("/mask/material-dispensing")
+@CrossOrigin (origins = "http://localhost:5173")
 public class Material_dispensing_Controller {
     private final Material_dispensing_Service ms;
 
@@ -22,7 +24,7 @@ public class Material_dispensing_Controller {
     }
 
     @GetMapping ("/{dispense_id}")
-    public Material_dispensing_Dto findOnd(String dispenseId){
+    public Material_dispensing_Dto findOnd(@PathVariable(name="dispense_id") String dispenseId){
         return ms.findOne(dispenseId);
     }
 }
