@@ -2,6 +2,7 @@ package springproject.controller;
 
 import java.util.List;
 
+import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -12,7 +13,8 @@ import springproject.model.dto.Anomaly_event_Dto;
 import springproject.service.Anomaly_event_Service;
 
 @RestController @RequiredArgsConstructor 
-@RequestMapping ("/api/anomaly-events")
+@RequestMapping ("/mask/anomaly-events")
+@CrossOrigin (origins = "http://localhost:5173/")
 public class Anomaly_event_Controller {
     private final Anomaly_event_Service anomaly_event_Service;
 

@@ -55,7 +55,6 @@ public class Bulk_qc_Controller {
             long totalElements,
             int totalPages) {
     }
-    
 
     // 개별 조회 (PK) 
     @GetMapping("/{qc_id}")
