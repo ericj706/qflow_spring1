@@ -12,7 +12,7 @@ import springproject.model.dto.Anomaly_rule_Dto;
 import springproject.service.Anomaly_rule_Service;
 
 @RestController @RequiredArgsConstructor 
-@RequestMapping ("/api/anomaly_rules")
+@RequestMapping ("/api/anomaly-rules")
 public class Anomaly_rule_Controller {
     private final Anomaly_rule_Service anomaly_rule_Service;
 
