@@ -31,8 +31,13 @@ dependencies { // start.spring.io
 
 	// 5. Spring Reactive Web : HTTP 통신
 	implementation 'org.springframework.boot:spring-boot-starter-webflux'
+
 	// 6. XML 파싱
 	implementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-xml:2.22.2'
+
+	// LocalDateTime JSON 변환
+	implementation 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310'
+	
 	// 7. CSV 파싱
 	implementation 'com.opencsv:opencsv:5.12.0'
 
