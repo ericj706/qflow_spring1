@@ -1,6 +1,7 @@
 package springproject.controller;
 
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import lombok.RequiredArgsConstructor;
@@ -9,11 +10,11 @@ import springproject.service.Filling_packaging_Service;
 
 import java.util.List;
 
+import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestParam;
 
-
+@CrossOrigin (origins = "http://localhost:5173")
 @RestController @RequestMapping ("/mask/filling-packagings")
 @RequiredArgsConstructor 
 public class Filling_packaging_Controller {
@@ -32,6 +33,5 @@ public class Filling_packaging_Controller {
         return filling_packaging_Service.findOne(pouch_id);
     }
     
-
 
 }
