@@ -49,7 +49,7 @@ public class Bulk_qc_Controller {
 
     // 목록과 페이지 정보를 담는 응답 DTO
     public record BulkQcPageResponse(
-            List<Bulk_qc_Dto> content,
+            List<Bulk_qc_Dto> content, 
             int page,
             int size,
             long totalElements,
