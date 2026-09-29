@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.CrossOrigin;
 
 @RestController 
 @RequiredArgsConstructor 
+@CrossOrigin(origins = "http://localhost:5175")
 @RequestMapping ("/mask/batches")
 @CrossOrigin(origins = "http://localhost:5173")
 public class Batches_Controller {
