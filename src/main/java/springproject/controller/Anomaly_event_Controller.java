@@ -14,7 +14,8 @@ import springproject.service.Anomaly_event_Service;
 
 @CrossOrigin (origins = "http://localhost:5173")
 @RestController @RequiredArgsConstructor 
-@RequestMapping ("/api/anomaly-events")
+@RequestMapping ("/mask/anomaly-events")
+@CrossOrigin (origins = "http://localhost:5173/")
 public class Anomaly_event_Controller {
     private final Anomaly_event_Service anomaly_event_Service;
 
