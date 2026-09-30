@@ -34,5 +34,6 @@ public class Anomaly_rule_Service {
         }
         return dtos;
     }
+    
 
 }

@@ -7,6 +7,7 @@ import java.util.Optional;
 import org.springframework.stereotype.Service;
 
 import lombok.RequiredArgsConstructor;
+import springproject.model.dto.Chart_Dto;
 import springproject.model.dto.Filling_packaging_Dto;
 import springproject.model.entity.Filling_packaging_Entity;
 import springproject.model.repository.Filling_packaging_Repository;
@@ -36,6 +37,18 @@ public class Filling_packaging_Service {
             return Filling_packaging_Dto.from(entity);
         }
         return null;
+    }
+
+    // 차트조회
+
+    public List<Chart_Dto> getChartSummary(String groupBy, String startDate, String endDate) {
+        if ("hourly".equalsIgnoreCase(groupBy)) {
+            return filling_packaging_Repository.findHourlySummary(startDate, endDate);
+        } else if ("lot".equalsIgnoreCase(groupBy)) {
+            return filling_packaging_Repository.findLotSummary(startDate, endDate);
+        } else {
+            return filling_packaging_Repository.findDailySummary(startDate, endDate);
+        }
     }
     
 }
