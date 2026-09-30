@@ -18,6 +18,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 @CrossOrigin (origins = "http://localhost:5173")
 @RestController @RequestMapping ("/mask/bulk-qc")
 @RequiredArgsConstructor 
+@CrossOrigin(origins = "http://localhost:5173")
 public class Bulk_qc_Controller {
     private final Bulk_qc_Service bulk_qc_Service;
 
