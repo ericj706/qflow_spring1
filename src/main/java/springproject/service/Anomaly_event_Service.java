@@ -23,6 +23,7 @@ public class Anomaly_event_Service {
             return Anomaly_event_Dto.from(entity);
         }return null;
     }
+    
     // 2) 전체조회
     public List<Anomaly_event_Dto> findAll(){
         List<Anomaly_event_Entity> anomaly_event_Entities = anomaly_event_Repository.findAll();
