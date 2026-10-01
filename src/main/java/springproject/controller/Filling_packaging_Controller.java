@@ -39,9 +39,10 @@ public class Filling_packaging_Controller {
     @GetMapping ("/summary")
     public List<Chart_Dto> getChartSummary(
             @RequestParam(name = "groupBy", defaultValue = "daily") String groupBy,
+            @RequestParam(name = "batchId", required = false) String batchId,
             @RequestParam(name = "startDate", required = false) String startDate,
             @RequestParam(name = "endDate", required = false) String endDate){
-            return filling_packaging_Service.getChartSummary(groupBy, startDate, endDate);
+            return filling_packaging_Service.getChartSummary(groupBy, batchId, startDate, endDate);
     }
     
 }
