@@ -26,7 +26,7 @@ public class Bulk_qc_Service {
 
     // 전체 조회 + 조건검색 + 페이징
     public List<Bulk_qc_Dto> search(Bulk_qc_SearchDto searchDto){
-        LocalDate startDate = searchDto.getStarDate();
+        LocalDate startDate = searchDto.getStartDate();
         LocalDate endDate = searchDto.getEndDate();
         // 기간 확인
         if(startDate != null && endDate != null && startDate.isAfter(endDate)){throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "시작일은 종료일보다 늦을 수 없습니다");}
