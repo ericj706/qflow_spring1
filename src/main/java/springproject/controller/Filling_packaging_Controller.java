@@ -5,8 +5,8 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import lombok.RequiredArgsConstructor;
-import springproject.model.dto.Chart_Dto;
 import springproject.model.dto.Filling_packaging_Dto;
+import springproject.model.dto.chart.Chart_Dto;
 import springproject.service.Filling_packaging_Service;
 
 import java.util.List;

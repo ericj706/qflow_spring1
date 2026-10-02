@@ -24,6 +24,7 @@ public class Anomaly_rule_Service {
             return Anomaly_rule_Dto.from(anomaly_rule_Entity);
         }return null;
     }
+    
     // 2) 전체조회
     public List<Anomaly_rule_Dto> findAll(){
         List<Anomaly_rule_Entity> anomaly_rule_Entities = anomaly_rule_Repository.findAll();

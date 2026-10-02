@@ -12,7 +12,7 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor @NoArgsConstructor @Builder @Data 
 public class Bulk_qc_SearchDto {
     @DateTimeFormat (iso = DateTimeFormat.ISO.DATE)
-    private  LocalDate starDate;
+    private  LocalDate startDate;
     @DateTimeFormat (iso = DateTimeFormat.ISO.DATE)
     private LocalDate endDate;
     private String batchId;

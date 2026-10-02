@@ -1,4 +1,4 @@
-package springproject.model.dto;
+package springproject.model.dto.chart;
 
 public interface Chart_Dto {
     String getTimeGroup();  // X축 라벨 (일별, 시간별, LOT별)

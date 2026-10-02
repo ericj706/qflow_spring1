@@ -6,6 +6,12 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
+<<<<<<< HEAD
+=======
+
+import springproject.model.dto.chart.Chart_Dto;
+import springproject.model.entity.Filling_packaging_Entity;
+>>>>>>> 68060f6a64655c5ca71b423ee2bfec739461384e
 
 import springproject.model.dto.Chart_Dto;
 import springproject.model.entity.Filling_packaging_Entity;
@@ -17,9 +23,9 @@ public interface Filling_packaging_Repository extends JpaRepository<Filling_pack
     @Query(value = """
         SELECT 
             DATE_FORMAT(timestamp, '%Y-%m-%d') AS timeGroup,
-            COUNT(CASE WHEN final_disposition IN ('DISP_ACCEPTED', 'PASS', 'OK') THEN 1 END) AS passCount,
-            COUNT(CASE WHEN final_disposition NOT IN ('DISP_ACCEPTED', 'PASS', 'OK') OR final_disposition IS NULL THEN 1 END) AS failCount,
-            ROUND((COUNT(CASE WHEN final_disposition NOT IN ('DISP_ACCEPTED', 'PASS', 'OK') OR final_disposition IS NULL THEN 1 END) / COUNT(*)) * 100, 2) AS defectRate
+            COUNT(CASE WHEN final_disposition IN ('DISP_ACCEPTED') THEN 1 END) AS passCount,
+            COUNT(CASE WHEN final_disposition NOT IN ('DISP_ACCEPTED') OR final_disposition IS NULL THEN 1 END) AS failCount,
+            ROUND((COUNT(CASE WHEN final_disposition NOT IN ('DISP_ACCEPTED') OR final_disposition IS NULL THEN 1 END) / COUNT(*)) * 100, 2) AS defectRate
         FROM filling_packaging
         WHERE (:startDate IS NULL OR :startDate = '' OR timestamp >= CONCAT(:startDate, ' 00:00:00'))
           AND (:endDate IS NULL OR :endDate = '' OR timestamp <= CONCAT(:endDate, ' 23:59:59'))
@@ -31,9 +37,9 @@ public interface Filling_packaging_Repository extends JpaRepository<Filling_pack
     @Query(value = """
         SELECT 
             DATE_FORMAT(timestamp, '%Y-%m-%d %H:00') AS timeGroup,
-            COUNT(CASE WHEN final_disposition IN ('DISP_ACCEPTED', 'PASS', 'OK') THEN 1 END) AS passCount,
-            COUNT(CASE WHEN final_disposition NOT IN ('DISP_ACCEPTED', 'PASS', 'OK') OR final_disposition IS NULL THEN 1 END) AS failCount,
-            ROUND((COUNT(CASE WHEN final_disposition NOT IN ('DISP_ACCEPTED', 'PASS', 'OK') OR final_disposition IS NULL THEN 1 END) / COUNT(*)) * 100, 2) AS defectRate
+            COUNT(CASE WHEN final_disposition IN ('DISP_ACCEPTED') THEN 1 END) AS passCount,
+            COUNT(CASE WHEN final_disposition NOT IN ('DISP_ACCEPTED') OR final_disposition IS NULL THEN 1 END) AS failCount,
+            ROUND((COUNT(CASE WHEN final_disposition NOT IN ('DISP_ACCEPTED') OR final_disposition IS NULL THEN 1 END) / COUNT(*)) * 100, 2) AS defectRate
         FROM filling_packaging
         WHERE (:startDate IS NULL OR :startDate = '' OR timestamp >= CONCAT(:startDate, ' 00:00:00'))
           AND (:endDate IS NULL OR :endDate = '' OR timestamp <= CONCAT(:endDate, ' 23:59:59'))
@@ -45,9 +51,9 @@ public interface Filling_packaging_Repository extends JpaRepository<Filling_pack
     @Query(value = """
         SELECT 
             batch_id AS timeGroup,
-            COUNT(CASE WHEN final_disposition IN ('DISP_ACCEPTED', 'PASS', 'OK') THEN 1 END) AS passCount,
-            COUNT(CASE WHEN final_disposition NOT IN ('DISP_ACCEPTED', 'PASS', 'OK') OR final_disposition IS NULL THEN 1 END) AS failCount,
-            ROUND((COUNT(CASE WHEN final_disposition NOT IN ('DISP_ACCEPTED', 'PASS', 'OK') OR final_disposition IS NULL THEN 1 END) / COUNT(*)) * 100, 2) AS defectRate
+            COUNT(CASE WHEN final_disposition IN ('DISP_ACCEPTED') THEN 1 END) AS passCount,
+            COUNT(CASE WHEN final_disposition NOT IN ('DISP_ACCEPTED') OR final_disposition IS NULL THEN 1 END) AS failCount,
+            ROUND((COUNT(CASE WHEN final_disposition NOT IN ('DISP_ACCEPTED') OR final_disposition IS NULL THEN 1 END) / COUNT(*)) * 100, 2) AS defectRate
         FROM filling_packaging
         WHERE (:startDate IS NULL OR :startDate = '' OR timestamp >= CONCAT(:startDate, ' 00:00:00'))
           AND (:endDate IS NULL OR :endDate = '' OR timestamp <= CONCAT(:endDate, ' 23:59:59'))
@@ -57,18 +63,18 @@ public interface Filling_packaging_Repository extends JpaRepository<Filling_pack
 
     // 4. 한 LOT내에 15분 단위
     @Query(value = """
-SELECT 
-    DATE_FORMAT(
-        DATE_SUB(timestamp, INTERVAL MINUTE(timestamp) % 15 MINUTE), '%Y-%m-%d %H:%i'
-    ) AS timeGroup,
-    COUNT(CASE WHEN final_disposition IN ('DISP_ACCEPTED', 'PASS', 'OK') THEN 1 END) AS passCount,
-    COUNT(CASE WHEN final_disposition NOT IN ('DISP_ACCEPTED', 'PASS', 'OK') OR final_disposition IS NULL THEN 1 END) AS failCount
-    FROM filling_packaging
-    WHERE batch_id = :batchId
-    AND (:startDate IS NULL OR :startDate = '' OR timestamp >= CONCAT(:startDate, ' 00:00:00'))
-    AND (:endDate IS NULL OR :endDate = '' OR timestamp <= CONCAT(:endDate, ' 23:59:59'))
-    GROUP BY timeGroup 
-    ORDER BY timeGroup ASC
+        SELECT 
+            DATE_FORMAT(
+                DATE_SUB(timestamp, INTERVAL MINUTE(timestamp) % 15 MINUTE), '%Y-%m-%d %H:%i'
+            ) AS timeGroup,
+            COUNT(CASE WHEN final_disposition IN ('DISP_ACCEPTED') THEN 1 END) AS passCount,
+            COUNT(CASE WHEN final_disposition NOT IN ('DISP_ACCEPTED') OR final_disposition IS NULL THEN 1 END) AS failCount,
+            ROUND((COUNT(CASE WHEN final_disposition NOT IN ('DISP_ACCEPTED') OR final_disposition IS NULL THEN 1 END) / COUNT(*)) * 100, 2) AS defectRate
+        FROM filling_packaging
+        WHERE batch_id = :batchId
+        AND (:startDate IS NULL OR :startDate = '' OR timestamp >= CONCAT(:startDate, ' 00:00:00'))
+        AND (:endDate IS NULL OR :endDate = '' OR timestamp <= CONCAT(:endDate, ' 23:59:59'))
+        GROUP BY timeGroup ORDER BY timeGroup ASC
         """, nativeQuery = true)
     List<Chart_Dto> find15minSummary(
         @Param("batchId") String batchId,
