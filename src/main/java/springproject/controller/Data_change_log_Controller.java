@@ -6,6 +6,7 @@ import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RestController;
 
 import lombok.RequiredArgsConstructor;
@@ -14,7 +15,7 @@ import springproject.service.Data_change_log_Service;
 
 @CrossOrigin (origins = "http://localhost:5173")
 @RestController @RequiredArgsConstructor 
-@RequestMapping ("/api/data-change-logs")
+@RequestMapping ("/mask/data-change-logs")
 public class Data_change_log_Controller {
     private final Data_change_log_Service data_change_log_Service;
 
