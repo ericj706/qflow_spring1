@@ -6,14 +6,10 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
-<<<<<<< HEAD
-=======
 
 import springproject.model.dto.chart.Chart_Dto;
 import springproject.model.entity.Filling_packaging_Entity;
->>>>>>> 68060f6a64655c5ca71b423ee2bfec739461384e
 
-import springproject.model.dto.Chart_Dto;
 import springproject.model.entity.Filling_packaging_Entity;
 
 @Repository
