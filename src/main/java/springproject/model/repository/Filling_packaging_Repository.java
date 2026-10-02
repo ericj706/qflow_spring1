@@ -10,7 +10,6 @@ import org.springframework.stereotype.Repository;
 import springproject.model.dto.chart.Chart_Dto;
 import springproject.model.entity.Filling_packaging_Entity;
 
-import springproject.model.entity.Filling_packaging_Entity;
 
 @Repository
 public interface Filling_packaging_Repository extends JpaRepository<Filling_packaging_Entity, String> {
