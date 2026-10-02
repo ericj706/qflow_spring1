@@ -30,8 +30,6 @@ public class Bulk_qc_Controller {
         return bulk_qc_Service.search(searchDto);
     }
     
-    
-    
     // 개별 조회 (PK) 
     @GetMapping("/{qc_id}")
     public Bulk_qc_Dto findOne(@PathVariable (name = "qc_id") String qc_id) {
