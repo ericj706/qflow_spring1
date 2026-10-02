@@ -34,13 +34,13 @@ public class Anomaly_rule_Dto {
                 .processCode(this.processCode)
                 .anomalyType(this.anomalyType)
                 .sensorName(this.sensorName)
-                .conditionType(this.conditionType)
+                .conditionType(this.conditionType != null ? this.conditionType : "RANGE")
                 .warningMin(this.warningMin)
                 .warningMax(this.warningMax)
                 .criticalMin(this.criticalMin)
                 .criticalMax(this.criticalMax)
                 .statusValue(this.statusValue)
-                .durationSeconds(this.durationSeconds)
+                .durationSeconds(this.durationSeconds != null ? this.durationSeconds : 1)
                 .checkItems(this.checkItems)
                 .responseDescription(this.responseDescription)
                 .isActive(this.isActive)
@@ -68,4 +68,6 @@ public class Anomaly_rule_Dto {
                 .updatedAt(entity.getUpdatedAt())
                 .build();
     }
+
+
 }

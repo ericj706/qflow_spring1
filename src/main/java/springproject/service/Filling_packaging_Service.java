@@ -42,21 +42,19 @@ public class Filling_packaging_Service {
 
     // 차트조회
 
-    // Filling_packaging_Service.java 내 메서드 수정/추가
-
     public List<Chart_Dto> getChartSummary(String groupBy, String batchId, String startDate, String endDate) {
         if ("15min".equalsIgnoreCase(groupBy) || "15분별".equalsIgnoreCase(groupBy)) {
             if (batchId == null || batchId.isEmpty()) {
                 return Collections.emptyList(); // batchId가 없으면 빈 리스트 반환
             }
             return filling_packaging_Repository.find15minSummary(batchId, startDate, endDate);
-    } else if ("hourly".equalsIgnoreCase(groupBy)) {
-        return filling_packaging_Repository.findHourlySummary(startDate, endDate);
-    } else if ("lot".equalsIgnoreCase(groupBy)) {
-        return filling_packaging_Repository.findLotSummary(startDate, endDate);
-    } else {
-        return filling_packaging_Repository.findDailySummary(startDate, endDate);
+        } else if ("hourly".equalsIgnoreCase(groupBy)) {
+            return filling_packaging_Repository.findHourlySummary(startDate, endDate);
+        } else if ("lot".equalsIgnoreCase(groupBy)) {
+            return filling_packaging_Repository.findLotSummary(startDate, endDate);
+        } else {
+            return filling_packaging_Repository.findDailySummary(startDate, endDate);
+        }
     }
-}
-    
+        
 }
