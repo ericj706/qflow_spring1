@@ -10,36 +10,24 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 @NoArgsConstructor @AllArgsConstructor @Builder @Data 
-public class Anomaly_event_SearchDto {
-
-    // 발생기간 시작일
+public class Process_execution_SearchDto {
+    // 공정 시작기간 시작일
+    // Entity의 start_time 기준
     @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
     private LocalDate startDate;
 
-    // 발생기간 종료일
+    // 공정 시작기간 종료일
+    // 종료일 당일의 모든 시간을 포함하도록 Service에서 처리
     @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
     private LocalDate endDate;
 
-    // 심각도
-    private String severity;
-
-    // 조치상태
-    private String actionStatus;
-
-    // LOT 번호: 정확히 일치
-    // LOT별 이력 조회 화면에서 사용
+    // 생산 LOT 번호: 정확히 일치
     private String batchId;
-
-    // LOT 번호 검색어: 부분 일치
-    private String batchIdKeyword;
 
     // 공정코드: 정확히 일치
     private String processCode;
 
-    // 이상 유형: 정확히 일치
-    private String anomalyType;
-
-    // 조치 담당자 번호
-    private Integer userId;
+    // 공정 진행상태: 정확히 일치
+    private String status;
     
 }
