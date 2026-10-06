@@ -4,6 +4,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 import org.springframework.data.domain.Page;  // 조회 결과 목록과 전체 건수·전체 페이지 수를 담는 타입
+import org.springframework.data.domain.Pageable;
 // org.hibernate.query.Page          Hibernate에서 조회할 페이지 범위를 지정하는 타입
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
