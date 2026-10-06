@@ -72,15 +72,17 @@ public class Anomaly_rule_Service {
     public Anomaly_rule_Dto activeChange(Integer ruleId){
         Anomaly_rule_Entity entity = anomaly_rule_Repository.findById(ruleId)
             .orElseThrow( ()-> new IllegalArgumentException("존재하지 않는 규칙:"+ruleId));
-        if (Boolean.TRUE.equals(entity.getIsActive())) {
+        boolean currentStatus = Boolean.TRUE.equals(entity.getIsActive());
+        if (currentStatus) {    // is_active = true인것 누르면 
             throw new RuntimeException("작업자의 동의 필요");
         }
-        Optional<Anomaly_rule_Entity> currentStatus = anomaly_rule_Repository
+        Optional<Anomaly_rule_Entity> currentActive = anomaly_rule_Repository
             .findByProcessCodeAndSensorNameAndIsActiveTrue(entity.getProcessCode(), entity.getSensorName());
-        currentStatus.ifPresent(oldRule -> {
-            oldRule.setIsActive(false);
+        currentActive.ifPresent(oldRule -> {
+            oldRule.setIsActive(false); // is_active = false확인
+            anomaly_rule_Repository.save(oldRule);
         });
-        entity.setIsActive(true);
+        entity.setIsActive(true); // 비활성화 상태-> 활성화로 전환
         Anomaly_rule_Entity updated = anomaly_rule_Repository.save(entity);
         return Anomaly_rule_Dto.from(updated);
     }
