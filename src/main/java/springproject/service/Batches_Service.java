@@ -23,18 +23,6 @@ public class Batches_Service {
 
 
     // ==========================================
-    // 기존 전체조회
-    // ==========================================
-    @Transactional(readOnly = true)
-    public List<Batches_Dto> findAll() {
-
-        return br.findAll().stream()
-                .map(Batches_Dto::from)
-                .toList();
-    }
-
-
-    // ==========================================
     // 전체조회 + 조건검색 + 페이징
     // ==========================================
     @Transactional(readOnly = true)
