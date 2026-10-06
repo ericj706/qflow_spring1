@@ -129,12 +129,12 @@ public class Filling_packaging_Service {
 
     // 차트조회
     public List<Chart_Dto> getChartSummary(String groupBy, String batchId, String startDate, String endDate) {
-        if ((startDate == null || startDate.trim().isEmpty()) && 
-            (endDate == null || endDate.trim().isEmpty())) {
-            LocalDate today = LocalDate.now();
-            endDate = today.toString();
-            startDate = today.minusDays(30).toString(); // 처음 페이지 진입시 30일단위만 차트 조회
-        }
+        // if ((startDate == null || startDate.trim().isEmpty()) && 
+        //     (endDate == null || endDate.trim().isEmpty())) {
+        //     LocalDate today = LocalDate.now();
+        //     endDate = today.toString();
+        //     startDate = today.minusDays(30).toString(); // 처음 페이지 진입시 30일단위만 차트 조회
+        // }
         
         if ("15min".equalsIgnoreCase(groupBy) || "15분별".equalsIgnoreCase(groupBy)) {
             if (batchId == null || batchId.isEmpty()) {
