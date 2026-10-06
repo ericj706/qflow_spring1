@@ -26,6 +26,10 @@ public class Anomaly_event_SearchDto {
     // 조치상태
     private String actionStatus;
 
+    // LOT 번호: 정확히 일치
+    // LOT별 이력 조회 화면에서 사용
+    private String batchId;
+
     // LOT 번호 검색어: 부분 일치
     private String batchIdKeyword;
 

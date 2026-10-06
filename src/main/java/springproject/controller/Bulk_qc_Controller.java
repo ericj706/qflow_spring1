@@ -5,10 +5,12 @@ import org.springframework.web.bind.annotation.RestController;
 
 import lombok.RequiredArgsConstructor;
 import springproject.model.dto.Bulk_qc_Dto;
+import springproject.model.dto.page.Page_response;
 import springproject.model.dto.search.Bulk_qc_SearchDto;
 import springproject.service.Bulk_qc_Service;
 
 import java.util.List;
+import java.util.Map;
 
 import org.springframework.data.domain.Page;
 import org.springframework.web.bind.annotation.CrossOrigin;
@@ -25,9 +27,12 @@ public class Bulk_qc_Controller {
     private final Bulk_qc_Service bulk_qc_Service;
 
     // 전체조회 + 조건검색 + 페이징
-    @GetMapping("")
-    public List<Bulk_qc_Dto> findAll(@ModelAttribute Bulk_qc_SearchDto searchDto) {
-        return bulk_qc_Service.search(searchDto);
+    @GetMapping
+    public Page_response<Bulk_qc_Dto> findAll(
+            @ModelAttribute Bulk_qc_SearchDto searchDto,
+            @RequestParam(name = "page", defaultValue = "0") int page) {
+        Page<Bulk_qc_Dto> result = bulk_qc_Service.search(searchDto, page);
+        return Page_response.from(result, Map.of());
     }
     
     // 개별 조회 (PK) 

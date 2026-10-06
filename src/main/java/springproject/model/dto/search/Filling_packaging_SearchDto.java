@@ -10,32 +10,33 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 @NoArgsConstructor @AllArgsConstructor @Builder @Data 
-public class Material_dispensing_SearchDto {
-    // 칭량기간 시작일
-    // Entity의 dispensedAt 기준
+public class Filling_packaging_SearchDto {
+    // 포장·검사 시작일
     @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
     private LocalDate startDate;
 
-    // 칭량기간 종료일
+    // 포장·검사 종료일
     @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
     private LocalDate endDate;
 
     // 생산 LOT 번호
     private String batchId;
 
-    // 원료코드
-    private String materialCode;
+    // 포장라인
+    private String packagingLine;
 
-    // 원료명:
-    private String materialName;
+    // 최종 판정
+    private String finalDisposition;
 
-    // 원료 LOT 번호
-    private String rawMaterialLot;
+    // 중량검사 결과
+    private String checkweigherStatus;
 
-    // 칭량상태:
-    private String status;
+    // 금속검사 결과
+    private String metalDetectorStatus;
+
+    // 비전검사 결과
+    private String visionInspectionStatus;
 
     // 담당자 번호
     private Integer userId;
-    
 }

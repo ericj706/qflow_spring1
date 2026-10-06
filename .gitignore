@@ -35,3 +35,6 @@ out/
 
 ### VS Code ###
 .vscode/
+
+## data_mask.sql git push무시
+src/main/resources/sql/data_mask.sql

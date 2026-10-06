@@ -7,12 +7,17 @@ import org.springframework.web.bind.annotation.RestController;
 import lombok.RequiredArgsConstructor;
 import springproject.model.dto.Filling_packaging_Dto;
 import springproject.model.dto.chart.Chart_Dto;
+import springproject.model.dto.page.Page_response;
+import springproject.model.dto.search.Filling_packaging_SearchDto;
 import springproject.service.Filling_packaging_Service;
 
 import java.util.List;
+import java.util.Map;
 
+import org.springframework.data.domain.Page;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
 
@@ -22,10 +27,13 @@ import org.springframework.web.bind.annotation.RequestBody;
 public class Filling_packaging_Controller {
     private final Filling_packaging_Service filling_packaging_Service;
     
-    // 전체조회
-    @GetMapping("")
-    public List<Filling_packaging_Dto> findAll() {
-        return filling_packaging_Service.findAll();
+     // 전체조회 + 조건검색 + 페이징
+    @GetMapping
+    public Page_response<Filling_packaging_Dto> findAll(
+            @ModelAttribute Filling_packaging_SearchDto searchDto,
+            @RequestParam(name = "page", defaultValue = "0") int page) {
+        Page<Filling_packaging_Dto> result = filling_packaging_Service.search(searchDto, page);
+        return Page_response.from(result, Map.of());
     }
     
 

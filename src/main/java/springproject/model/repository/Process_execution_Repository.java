@@ -11,22 +11,25 @@ import org.springframework.stereotype.Repository;
 
 import springproject.model.entity.Process_execution_Entity;
 
-@Repository
-public interface Process_execution_Repository
-        extends JpaRepository<Process_execution_Entity, Long> {
-
-    // 공정 실행이력 전체조회 + 조건검색 + 페이징
+@Repository 
+public interface Process_execution_Repository extends JpaRepository<Process_execution_Entity, Long> {
+    // 전체조회 + 조건검색 + 페이징
     @Query("""
-        SELECT p
-        FROM Process_execution_Entity p
-        LEFT JOIN p.batchesEntity b
-        WHERE (:startAt IS NULL OR p.start_time >= :startAt)
-        AND (:endAtExclusive IS NULL OR p.start_time < :endAtExclusive)
-        AND (:batchId IS NULL OR b.batchId = :batchId)
-        AND (:processCode IS NULL OR p.process_code = :processCode)
-        AND (:status IS NULL OR p.status = :status)
-        ORDER BY p.start_time DESC
-        """)
+            SELECT p
+            FROM Process_execution_Entity p
+            LEFT JOIN p.batchesEntity b
+            WHERE (:startAt IS NULL
+                   OR p.start_time >= :startAt)
+              AND (:endAtExclusive IS NULL
+                   OR p.start_time < :endAtExclusive)
+              AND (:batchId IS NULL
+                   OR b.batchId = :batchId)
+              AND (:processCode IS NULL
+                   OR p.process_code = :processCode)
+              AND (:status IS NULL
+                   OR p.status = :status)
+            ORDER BY p.start_time DESC, p.execution_id DESC
+            """)
     Page<Process_execution_Entity> search(
             @Param("startAt") LocalDateTime startAt,
             @Param("endAtExclusive") LocalDateTime endAtExclusive,
