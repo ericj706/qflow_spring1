@@ -42,7 +42,7 @@ public interface Filling_packaging_Repository extends JpaRepository<Filling_pack
         FROM filling_packaging
         WHERE (:startDate IS NULL OR :startDate = '' OR DATE_FORMAT(timestamp, '%Y-%m-%d') >= :startDate)
           AND (:endDate IS NULL OR :endDate = '' OR DATE_FORMAT(timestamp, '%Y-%m-%d') <= :endDate)
-        GROUP BY DATE_FORMAT(timestamp, '%Y-%m-%d %H:00') 
+        GROUP BY DATE_FORMAT(timestamp, '%Y-%m-%d %H:00')
         ORDER BY timeGroup ASC
         """, nativeQuery = true)
     List<Chart_Dto> findHourlySummary(@Param("startDate") String startDate, @Param("endDate") String endDate);
@@ -83,7 +83,7 @@ public interface Filling_packaging_Repository extends JpaRepository<Filling_pack
         @Param("startDate") String startDate,
         @Param("endDate") String endDate);
 
-        // 5. 목록 전체조회 + 조건검색 + 페이징
+    // 5. 목록 전체조회 + 조건검색 + 페이징
     @Query("""
             SELECT f
             FROM Filling_packaging_Entity f
