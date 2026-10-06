@@ -13,29 +13,31 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @Builder
 @Data
-public class Batches_SearchDto {
+public class Material_dispensing_SearchDto {
 
+    // 칭량일자 시작일
     @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
     private LocalDate startDate;
 
+    // 칭량일자 종료일
     @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
     private LocalDate endDate;
 
-    // LOT 번호 정확히 일치
+    // 생산 LOT 번호
     private String batchId;
 
-    // LOT 번호 또는 제품명 부분검색
-    private String keyword;
+    // 원료코드
+    private String materialCode;
 
-    // 제품코드
-    private String productCode;
+    // 원료명
+    private String materialName;
 
-    // 생산상태
+    // 원료 LOT 번호
+    private String rawMaterialLot;
+
+    // 칭량상태
     private String status;
 
     // 담당자 번호
     private Integer userId;
-
-    // 제조 탱크번호
-    private String tankId;
 }

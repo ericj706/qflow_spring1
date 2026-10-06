@@ -42,7 +42,11 @@ public class Batches_Service {
             Batches_SearchDto searchDto,
             Pageable pageable) {
 
-        // 시작일
+        // ------------------------------------------
+        // 조회 시작일
+        // LocalDate → LocalDateTime
+        // 예: 2023-01-01 → 2023-01-01 00:00:00
+        // ------------------------------------------
         LocalDateTime startAt = null;
 
         if (searchDto.getStartDate() != null) {
@@ -53,7 +57,15 @@ public class Batches_Service {
         }
 
 
-        // 종료일
+        // ------------------------------------------
+        // 조회 종료일
+        // 해당 날짜 하루 전체를 포함하기 위해
+        // 다음날 00:00 이전까지 검색
+        //
+        // 예:
+        // endDate = 2023-01-05
+        // → endAtExclusive = 2023-01-06 00:00:00
+        // ------------------------------------------
         LocalDateTime endAtExclusive = null;
 
         if (searchDto.getEndDate() != null) {
@@ -65,12 +77,32 @@ public class Batches_Service {
         }
 
 
-        // Repository 검색
+        // ------------------------------------------
+        // Repository 조건검색 + 페이징
+        // ------------------------------------------
         return br.search(
                 startAt,
                 endAtExclusive,
+
+                // LOT 번호 정확히 일치
+                searchDto.getBatchId(),
+
+                // LOT 번호 또는 제품명 부분검색
+                searchDto.getKeyword(),
+
+                // 제품코드
                 searchDto.getProductCode(),
+
+                // 생산상태
                 searchDto.getStatus(),
+
+                // 담당자 번호
+                searchDto.getUserId(),
+
+                // 제조 탱크번호
+                searchDto.getTankId(),
+
+                // page, size
                 pageable
         )
         .map(Batches_Dto::from);
@@ -86,9 +118,9 @@ public class Batches_Service {
         return br.findById(batchId)
                 .map(Batches_Dto::from)
                 .orElseThrow(
-                    () -> new IllegalArgumentException(
-                        "존재하지 않는 배치 ID"
-                    )
+                        () -> new IllegalArgumentException(
+                                "존재하지 않는 배치 ID"
+                        )
                 );
     }
 }
