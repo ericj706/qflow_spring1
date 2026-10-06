@@ -15,24 +15,26 @@ import springproject.model.entity.Bulk_qc_Entity;
 @Repository 
 public interface Bulk_qc_Repository extends JpaRepository<Bulk_qc_Entity, String> {
 
-        @Query ("""
-                        SELECT q
-                        FROM Bulk_qc_Entity q
-                        LEFT JOIN q.batchesEntity b
-                        LEFT JOIN q.usersEntity u
-                        WHERE ( :startAt IS NULL OR q.sample_time >= :startAt )
-                        AND (:endAtExclusive IS NULL OR q.sample_time < :endAtExclusive)
-                        AND ( :batchId IS NULL OR b.batchId = :batchId )
-                        AND (:overallQcResult Is NULL OR q.overall_qc_result = :overallQcResult)
-                        AND (:userId IS NULL OR u.userId = :userId)
-                        ORDER BY q.sample_time DESC, q.qc_id ASC
-                        """)
-        List<Bulk_qc_Entity> search(
-                @Param ("startAt") LocalDateTime startAt,
-                @Param ("endAtExclusive") LocalDateTime endAtExclusive,
-                @Param ("batchId") String batchId,
-                @Param ("overallQcResult") String overallQcResult,
-                @Param ("userId") Integer userId
-        );
+        // 전체조회 + 조건검색 + 페이징
+    @Query("""
+            SELECT q
+            FROM Bulk_qc_Entity q
+            LEFT JOIN q.batchesEntity b
+            LEFT JOIN q.usersEntity u
+            WHERE (:startAt IS NULL OR q.sample_time >= :startAt)
+              AND (:endAtExclusive IS NULL OR q.sample_time < :endAtExclusive)
+              AND (:batchId IS NULL OR b.batchId = :batchId)
+              AND (:overallQcResult IS NULL OR q.overall_qc_result = :overallQcResult)
+              AND (:userId IS NULL OR u.userId = :userId)
+            ORDER BY q.sample_time DESC, q.qc_id ASC
+            """)
+    Page<Bulk_qc_Entity> search(
+            @Param("startAt") LocalDateTime startAt,
+            @Param("endAtExclusive") LocalDateTime endAtExclusive,
+            @Param("batchId") String batchId,
+            @Param("overallQcResult") String overallQcResult,
+            @Param("userId") Integer userId,
+            Pageable pageable
+    );
     
 }

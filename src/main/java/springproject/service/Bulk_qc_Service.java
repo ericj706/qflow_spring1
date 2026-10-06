@@ -24,40 +24,70 @@ import springproject.model.repository.Bulk_qc_Repository;
 public class Bulk_qc_Service {
     private final Bulk_qc_Repository bulk_qc_Repository;
 
-    // 전체 조회 + 조건검색 + 페이징
-    public List<Bulk_qc_Dto> search(Bulk_qc_SearchDto searchDto){
+    // 전체조회 + 조건검색 + 페이징
+    public Page<Bulk_qc_Dto> search(
+            Bulk_qc_SearchDto searchDto,
+            int page) {
+        // 페이지 번호 확인
+        if (page < 0) {throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"페이지 번호는 0 이상이어야 합니다.");
+        }
+
+        // 검색조건 꺼내기
         LocalDate startDate = searchDto.getStartDate();
         LocalDate endDate = searchDto.getEndDate();
-        // 기간 확인
-        if(startDate != null && endDate != null && startDate.isAfter(endDate)){throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "시작일은 종료일보다 늦을 수 없습니다");}
-        
-        // 담당잠 번호 확인 userId
-        if(searchDto.getUserId() != null && searchDto.getUserId() <= 0){throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "담당자 번호는 1 이상");}
-
-        // 빈 문자열 검색조건에서 제외
         String batchId = searchDto.getBatchId();
-        if(batchId != null){batchId = batchId.trim();
-            if(batchId.isEmpty()){batchId=null;}} // 양끝 공백 제거
-
-        // 검사 결과 , 공백 제거 앞뒤, 빈 문자열 조건 제외
         String overallQcResult = searchDto.getOverallQcResult();
-        if(overallQcResult != null){overallQcResult = overallQcResult.trim();
-            if(overallQcResult.isEmpty()){overallQcResult=null;}}
-
-        // 검색시작일 00:00 이상
-        LocalDateTime startAt = null;
-        if(startDate != null){startAt = startDate.atStartOfDay();}
-
-        // 검색 종요일 다음 날 00:00 미만  ( 종료일 당일의 모든 시간을 포함하기 위한 처리)
-        LocalDateTime endAtExclusive = null;
-        if(endDate != null){endAtExclusive = endDate.plusDays(1).atStartOfDay();}
-
-        // 조건에 맞는 전체 기록 조회
         Integer userId = searchDto.getUserId();
-        List<Bulk_qc_Entity> entities = bulk_qc_Repository.search(startAt, endAtExclusive, batchId, overallQcResult, userId);
-        
-        return  entities.stream().map(Bulk_qc_Dto::from).toList();
-        
+
+        // 검색기간 확인
+        if (startDate != null&& endDate != null&& startDate.isAfter(endDate)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"시작일은 종료일보다 늦을 수 없습니다.");
+        }
+
+        // 종료일에 하루를 더할 수 있는지 확인
+        if (LocalDate.MAX.equals(endDate)) {throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"종료일의 범위를 확인해 주세요.");
+        }
+
+        // 담당자 번호 확인
+        if (userId != null && userId <= 0) {throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"담당자 번호는 1 이상이어야 합니다.");
+        }
+
+        // LOT 번호: 앞뒤 공백 제거, 빈 문자열은 null 처리
+        if (batchId != null) {
+            batchId = batchId.trim();
+            if (batchId.isEmpty()) {batchId = null;}
+        }
+
+        // 검사결과: 앞뒤 공백 제거, 빈 문자열은 null 처리
+        if (overallQcResult != null) {
+            overallQcResult = overallQcResult.trim();
+            if (overallQcResult.isEmpty()) {overallQcResult = null;}
+        }
+
+        // 시작일 당일 00:00 이상
+        LocalDateTime startAt = null;
+        if (startDate != null) {startAt = startDate.atStartOfDay();}
+
+        // 종료일 다음 날 00:00 미만
+        // 종료일 당일의 모든 시간을 포함
+        LocalDateTime endAtExclusive = null;
+        if (endDate != null) {endAtExclusive = endDate.plusDays(1).atStartOfDay();}
+
+        // 한 페이지당 20개 고정
+        // 정렬은 Repository의 ORDER BY에서 처리
+        Pageable pageable = PageRequest.of(page, 20);
+        // 조건검색 + 페이징 조회
+        Page<Bulk_qc_Entity> result = bulk_qc_Repository.search(
+                startAt,
+                endAtExclusive,
+                batchId,
+                overallQcResult,
+                userId,
+                pageable
+        );
+
+        // 페이지 정보를 유지하면서 Entity → DTO 변환
+        return result.map(Bulk_qc_Dto::from);
     }
         
 

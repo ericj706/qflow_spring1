@@ -1,7 +1,10 @@
 package springproject.model.repository;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -79,4 +82,34 @@ public interface Filling_packaging_Repository extends JpaRepository<Filling_pack
         @Param("batchId") String batchId,
         @Param("startDate") String startDate,
         @Param("endDate") String endDate);
+
+        // 5. 목록 전체조회 + 조건검색 + 페이징
+    @Query("""
+            SELECT f
+            FROM Filling_packaging_Entity f
+            LEFT JOIN f.batchesEntity b
+            LEFT JOIN f.usersEntity u
+            WHERE (:startAt IS NULL OR f.timestamp >= :startAt)
+              AND (:endAtExclusive IS NULL OR f.timestamp < :endAtExclusive)
+              AND (:batchId IS NULL OR b.batchId = :batchId)
+              AND (:packagingLine IS NULL OR f.packaging_line = :packagingLine)
+              AND (:finalDisposition IS NULL OR f.final_disposition = :finalDisposition)
+              AND (:checkweigherStatus IS NULL OR f.checkweigher_status = :checkweigherStatus)
+              AND (:metalDetectorStatus IS NULL OR f.metal_detector_status = :metalDetectorStatus)
+              AND (:visionInspectionStatus IS NULL OR f.vision_inspection_status = :visionInspectionStatus)
+              AND (:userId IS NULL OR u.userId = :userId)
+            ORDER BY f.timestamp DESC, f.pouch_id ASC
+            """)
+    Page<Filling_packaging_Entity> search(
+            @Param("startAt") LocalDateTime startAt,
+            @Param("endAtExclusive") LocalDateTime endAtExclusive,
+            @Param("batchId") String batchId,
+            @Param("packagingLine") String packagingLine,
+            @Param("finalDisposition") String finalDisposition,
+            @Param("checkweigherStatus") String checkweigherStatus,
+            @Param("metalDetectorStatus") String metalDetectorStatus,
+            @Param("visionInspectionStatus") String visionInspectionStatus,
+            @Param("userId") Integer userId,
+            Pageable pageable
+    );
 }
