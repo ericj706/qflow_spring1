@@ -9740,9 +9740,9 @@ INSERT INTO `filling_packaging` (`pouch_id`,`batch_id`,`user_id`,`packaging_line
 ('TEST-PKG-045-010','TEST-LOT-045',3,'LINE_PKG_03','2026-03-17 01:00:08.999000','SHT_VEGAN_TENCEL','TEST-SHEET-3',3.000,13.000,13.000,26.000,6.000,35.000,182.900,182.800,4.870,1.300,'CW_PASS','MD_ERR_DETECTED','VIS_NORMAL','DISP_REJECTED','TEST_FIXTURE','2026-10-01 09:00:00.000000','2026-10-01 09:00:00.000000');
 
 INSERT INTO `anomaly_rule` (`rule_id`,`process_code`,`anomaly_type`,`sensor_name`,`condition_type`,`warning_min`,`warning_max`,`critical_min`,`critical_max`,`status_value`,`duration_seconds`,`check_items`,`response_description`,`is_active`,`created_at`,`updated_at`) VALUES
-(900001,'OP_S02_HOMO_DISPERSE','모터 토크 과다','모터 토크(%)','GREATER_THAN',40.000,50.000,50.000,100.000,NULL,15,'[테스트 기준] 모터 부하와 점증제 투입량 확인','[테스트 안내] 회전속도 조정 후 재측정',1,'2026-10-01 09:00:00.000000','2026-10-01 09:00:00.000000'),
-(900002,'PACKAGING','금속 이물 검출','금속검출 결과','EQUAL',NULL,NULL,NULL,NULL,'MD_ERR_DETECTED',0,'[테스트 기준] 금속검출기와 해당 제품 확인','[테스트 안내] 제품 격리 및 검출기 점검',1,'2026-10-01 09:00:00.000000','2026-10-01 09:00:00.000000'),
-(900003,'OP_S03_NEUTRAL_GEL','pH 범위 이탈','pH','RANGE',5.500,6.500,5.000,7.000,NULL,10,'[비활성 테스트 규칙] pH 센서 확인','실제 운영 기준으로 사용하지 않음',0,'2026-10-01 09:00:00.000000','2026-10-01 09:00:00.000000');
+(900001,'OP_S02_HOMO_DISPERSE','모터 토크 과다','모터 토크(%)','GREATER_THAN',40.000,50.000,50.000,100.000,NULL,15,'[테스트 기준] 모터 부하와 점증제 투입량 확인','[테스트 안내] 회전속도 조정 후 재측정',TRUE,'2026-10-01 09:00:00.000000','2026-10-01 09:00:00.000000'),
+(900002,'PACKAGING','금속 이물 검출','금속검출 결과','EQUAL',NULL,NULL,NULL,NULL,'MD_ERR_DETECTED',0,'[테스트 기준] 금속검출기와 해당 제품 확인','[테스트 안내] 제품 격리 및 검출기 점검',TRUE,'2026-10-01 09:00:00.000000','2026-10-01 09:00:00.000000'),
+(900003,'OP_S03_NEUTRAL_GEL','pH 범위 이탈','pH','RANGE',5.500,6.500,5.000,7.000,NULL,10,'[비활성 테스트 규칙] pH 센서 확인','실제 운영 기준으로 사용하지 않음',FALSE,'2026-10-01 09:00:00.000000','2026-10-01 09:00:00.000000');
 
 INSERT INTO `anomaly_event` (`anomaly_id`,`batch_id`,`pouch_id`,`rule_id`,`source_alarm_id`,`process_code`,`anomaly_type`,`sensor_name`,`measured_value`,`severity`,`alarm_message`,`occurred_at`,`resolved_at`,`duration_sec`,`action_status`,`action_note`,`user_id`,`action_time`,`source_type`,`created_at`,`updated_at`) VALUES
 (900001,'TEST-LOT-001',NULL,900001,'TEST-ALM-900001','OP_S02_HOMO_DISPERSE','모터 토크 과다','모터 토크(%)',45.000,'ALM_SEV_WARN','[테스트] 모터 토크가 주의 기준을 초과했습니다.','2026-01-30 21:20:00.000000','2026-01-30 21:25:00.000000',300,'ACKNOWLEDGED','[테스트] 현장 확인 및 기록 완료
