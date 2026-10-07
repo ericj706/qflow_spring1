@@ -50,5 +50,5 @@ public interface  Material_dispensing_Repository extends JpaRepository<Material_
             @Param("userId") Integer userId,
             Pageable pageable
     );
-    List<Material_dispensing_Entity> findByBatchId(String batchId);
+    
 }
