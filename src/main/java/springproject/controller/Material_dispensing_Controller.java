@@ -8,6 +8,9 @@ import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -47,5 +50,26 @@ public class Material_dispensing_Controller {
             @PathVariable(name = "dispense_id") String dispenseId) {
 
         return ms.findOne(dispenseId);
+    }
+
+    // ==========================================
+    // 원료 칭량 등록
+    // ==========================================
+    @PostMapping
+    public Material_dispensing_Dto save(
+            @RequestBody Material_dispensing_Dto dto) {
+
+        return ms.save(dto);
+    }
+
+    // ==========================================
+    // 원료 칭량 수정
+    // ==========================================
+   @PutMapping("/{dispenseId}")
+    public Material_dispensing_Dto update(
+            @PathVariable(name = "dispenseId") String dispenseId,
+            @RequestBody Material_dispensing_Dto dto) {
+
+        return ms.update(dispenseId, dto);
     }
 }

@@ -14,14 +14,22 @@ import org.springframework.web.server.ResponseStatusException;
 import lombok.RequiredArgsConstructor;
 import springproject.model.dto.Material_dispensing_Dto;
 import springproject.model.dto.search.Material_dispensing_SearchDto;
+import springproject.model.entity.Batches_Entity;
 import springproject.model.entity.Material_dispensing_Entity;
+import springproject.model.entity.Users_Entity;
+import springproject.model.repository.Batches_Repository;
 import springproject.model.repository.Material_dispensing_Repository;
+import springproject.model.repository.Users_Repository;
+
 
 @Service 
 @RequiredArgsConstructor 
 @Transactional(readOnly = true)
 public class Material_dispensing_Service {
     private final Material_dispensing_Repository material_dispensing_Repository;
+    
+    private final Batches_Repository br;
+    private final Users_Repository ur;
 
     // 전체조회 + 조건검색 + 페이징
     public Page<Material_dispensing_Dto> search(
@@ -204,5 +212,109 @@ public class Material_dispensing_Service {
                                 "존재하지 않는 ID"
                         )
                 );
+    }
+
+    // ==========================================
+    // 원료 칭량 등록
+    // ==========================================
+    @Transactional
+    public Material_dispensing_Dto save(Material_dispensing_Dto dto) {
+
+        // 칭량번호 중복 확인
+        if (material_dispensing_Repository.existsById(dto.getDispenseId())) {
+            throw new IllegalArgumentException(
+                    "이미 존재하는 칭량 ID입니다."
+            );
+        }
+
+        // 생산 LOT 조회
+        Batches_Entity batchesEntity =
+                br.findById(dto.getBatchId())
+                        .orElseThrow(
+                                () -> new IllegalArgumentException(
+                                        "존재하지 않는 생산 LOT입니다."
+                                )
+                        );
+
+        // 담당자 조회
+        Users_Entity usersEntity = null;
+
+        if (dto.getUserId() != null) {
+            usersEntity =
+                    ur.findById(dto.getUserId())
+                            .orElseThrow(
+                                    () -> new IllegalArgumentException(
+                                            "존재하지 않는 담당자입니다."
+                                    )
+                            );
+        }
+
+        // DTO → Entity
+        Material_dispensing_Entity entity =
+                dto.toEntity(batchesEntity, usersEntity);
+
+        // DB 저장
+        Material_dispensing_Entity savedEntity =
+                material_dispensing_Repository.save(entity);
+
+        // Entity → DTO
+        return Material_dispensing_Dto.from(savedEntity);
+    }
+
+    // ==========================================
+    // 원료 칭량 수정
+    // ==========================================
+    @Transactional
+    public Material_dispensing_Dto update(
+            String dispenseId,
+            Material_dispensing_Dto dto) {
+
+        // 1. 수정할 원료 칭량 데이터 조회
+        Material_dispensing_Entity entity =
+                material_dispensing_Repository.findById(dispenseId)
+                        .orElseThrow(
+                                () -> new IllegalArgumentException(
+                                        "존재하지 않는 칭량 ID입니다."
+                                )
+                        );
+
+        // 2. 생산 LOT 조회
+        Batches_Entity batchesEntity =
+                br.findById(dto.getBatchId())
+                        .orElseThrow(
+                                () -> new IllegalArgumentException(
+                                        "존재하지 않는 생산 LOT입니다."
+                                )
+                        );
+
+        // 3. 담당자 조회
+        Users_Entity usersEntity = null;
+
+        if (dto.getUserId() != null) {
+            usersEntity =
+                    ur.findById(dto.getUserId())
+                            .orElseThrow(
+                                    () -> new IllegalArgumentException(
+                                            "존재하지 않는 담당자입니다."
+                                    )
+                            );
+        }
+
+        // 4. 기존 데이터 수정
+        entity.setBatchesEntity(batchesEntity);
+        entity.setMaterialCode(dto.getMaterialCode());
+        entity.setMaterialName(dto.getMaterialName());
+        entity.setRawMaterialLot(dto.getRawMaterialLot());
+        entity.setTargetQtyKg(dto.getTargetQtyKg());
+        entity.setActualQtyKg(dto.getActualQtyKg());
+        entity.setUsersEntity(usersEntity);
+        entity.setDispensedAt(dto.getDispensedAt());
+        entity.setStatus(dto.getStatus());
+
+        // 5. DB 저장
+        Material_dispensing_Entity updatedEntity =
+                material_dispensing_Repository.save(entity);
+
+        return Material_dispensing_Dto.from(updatedEntity);
     }
 }

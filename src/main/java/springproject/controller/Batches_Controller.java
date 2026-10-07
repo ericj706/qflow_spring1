@@ -7,6 +7,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -56,10 +57,14 @@ public class Batches_Controller {
 
              return bs.save(dto);
        }
+    // ==========================================
+    // LOT 수정
+    // ==========================================
+    @PutMapping ("/{batchId}")
+    public Batches_Dto update(
+            @PathVariable(name = "batchId") String batchId,
+            @RequestBody Batches_Dto dto) {
 
-    // 테스트용
-    @PostMapping("/test")
-    public String testPost() {
-        return "POST 성공";
-}
+        return bs.update(batchId, dto);
+    }
 }

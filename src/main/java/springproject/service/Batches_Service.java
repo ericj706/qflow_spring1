@@ -148,4 +148,51 @@ public class Batches_Service {
    // 5. Entity → DTO 변환 후 반환
    return Batches_Dto.from(savedEntity);
    }
+   // ==========================================
+   // LOT 수정
+   // ==========================================
+   @Transactional
+   public Batches_Dto update(String batchId, Batches_Dto dto) {
+
+      // 1. 수정할 LOT 조회
+      Batches_Entity entity = br.findById(batchId)
+              .orElseThrow(
+                      () -> new IllegalArgumentException(
+                            "존재하지 않는 배치 ID입니다."
+                      )
+              );
+
+      // 2. 담당자 처리
+      Users_Entity usersEntity = null;
+
+      if (dto.getUserId() != null) {
+          usersEntity = ur.findById(dto.getUserId())
+                  .orElseThrow(
+                        () -> new IllegalArgumentException(
+                                "존재하지 않는 담당자입니다."
+                        )
+                );
+      }
+
+      // 3. LOT 정보 수정
+      entity.setProductCode(dto.getProductCode());
+      entity.setProductName(dto.getProductName());
+      entity.setTargetBulkKg(dto.getTargetBulkKg());
+      entity.setActualBulkKg(dto.getActualBulkKg());
+      entity.setTargetUnits(dto.getTargetUnits());
+      entity.setActualUnits(dto.getActualUnits());
+      entity.setDefectUnits(dto.getDefectUnits());
+      entity.setStartTime(dto.getStartTime());
+      entity.setEndTime(dto.getEndTime());
+      entity.setStatus(dto.getStatus());
+      entity.setUsersEntity(usersEntity);
+      entity.setTankId(dto.getTankId());
+      entity.setRecordSource(dto.getRecordSource());
+
+      // 4. 저장
+      Batches_Entity updatedEntity = br.save(entity);
+
+      // 5. DTO로 반환
+      return Batches_Dto.from(updatedEntity);
+  }
 }
