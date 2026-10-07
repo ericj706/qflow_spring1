@@ -97,7 +97,7 @@ public class Data_change_log_Service {
             } else {
                 // update 등으로 입력해도 UPDATE로 검색
                 changeType = changeType.toUpperCase(Locale.ROOT);
-                if (!"INSERT".equals(changeType) && !"UPDATE".equals(changeType) && !"DELETE".equals(changeType)) {
+                if (!"등록".equals(changeType) && !"수정".equals(changeType) && !"삭제".equals(changeType)) {
                     throw new ResponseStatusException(
                             HttpStatus.BAD_REQUEST,"변경 유형은 INSERT, UPDATE, DELETE 중 하나여야 합니다."
                     );

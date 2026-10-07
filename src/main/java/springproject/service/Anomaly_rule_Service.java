@@ -55,7 +55,7 @@ public class Anomaly_rule_Service {
         // 동일공정,동일검사항목 -> 현재 사용중인 규칙 조회
         Optional<Anomaly_rule_Entity> opt = anomaly_rule_Repository
             .findByProcessCodeAndSensorNameAndIsActiveTrue(dto.getProcessCode(), dto.getSensorName());
-        // 이전규칙이 존재하면 isActive->false
+        // 이전 규칙이 존재하면 isActive->false
         opt.ifPresent(oldRule -> {
             oldRule.setIsActive(false);
         });
@@ -72,7 +72,7 @@ public class Anomaly_rule_Service {
     public Anomaly_rule_Dto activeChange(Integer ruleId){
         Anomaly_rule_Entity entity = anomaly_rule_Repository.findById(ruleId)
             .orElseThrow( ()-> new IllegalArgumentException("존재하지 않는 규칙:"+ruleId));
-        boolean currentStatus = Boolean.TRUE.equals(entity.getIsActive());
+        boolean currentStatus = Boolean.TRUE.equals(entity.getIsActive()); 
         if (currentStatus) {    // is_active = true인것 누르면 
             throw new RuntimeException("작업자의 동의 필요");
         }

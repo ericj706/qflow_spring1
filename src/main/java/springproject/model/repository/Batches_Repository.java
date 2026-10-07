@@ -1,6 +1,7 @@
 package springproject.model.repository;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -49,4 +50,6 @@ public interface Batches_Repository
             @Param("tankId") String tankId,
             Pageable pageable
     );
+    
+    List<Batches_Entity> findAllByOrderByStartTimeDesc();
 }
