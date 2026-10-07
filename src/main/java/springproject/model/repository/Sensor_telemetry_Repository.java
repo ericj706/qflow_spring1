@@ -38,5 +38,5 @@ public interface Sensor_telemetry_Repository extends JpaRepository<Sensor_teleme
             @Param("userId") Integer userId,
             Pageable pageable
     );
-    List<Sensor_telemetry_Entity> findByExecutionIdInOrderByTimestampAsc(List<Long> executionIds);
+    
 }

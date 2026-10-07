@@ -113,5 +113,5 @@ public interface Filling_packaging_Repository extends JpaRepository<Filling_pack
             Pageable pageable
     );
     
-    List<Filling_packaging_Entity> findByBatchId(String batchId);
+
 }
