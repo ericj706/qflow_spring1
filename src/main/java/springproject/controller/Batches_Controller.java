@@ -6,6 +6,9 @@ import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -18,6 +21,7 @@ import springproject.service.Batches_Service;
 @RequiredArgsConstructor
 @RequestMapping("/mask/batches")
 @CrossOrigin(origins = "http://localhost:5173")
+
 public class Batches_Controller {
 
     private final Batches_Service bs;
@@ -43,5 +47,24 @@ public class Batches_Controller {
             @PathVariable(name = "batchId") String batchId) {
 
         return bs.findOne(batchId);
+    }
+    // ==========================================
+    // LOT 등록
+    // ==========================================
+    @PostMapping
+    public Batches_Dto save(
+            @RequestBody Batches_Dto dto) {
+
+             return bs.save(dto);
+       }
+    // ==========================================
+    // LOT 수정
+    // ==========================================
+    @PutMapping ("/{batchId}")
+    public Batches_Dto update(
+            @PathVariable(name = "batchId") String batchId,
+            @RequestBody Batches_Dto dto) {
+
+        return bs.update(batchId, dto);
     }
 }

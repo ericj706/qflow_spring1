@@ -15,17 +15,27 @@ import lombok.NoArgsConstructor;
 @Data
 public class Batches_SearchDto {
 
-    // 조회 시작일
     @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
     private LocalDate startDate;
 
-    // 조회 종료일
     @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
     private LocalDate endDate;
 
-    // 제품 코드
+    // LOT 번호 정확히 일치
+    private String batchId;
+
+    // LOT 번호 또는 제품명 부분검색
+    private String keyword;
+
+    // 제품코드
     private String productCode;
 
-    // 생산 상태
+    // 생산상태
     private String status;
+
+    // 담당자 번호
+    private Integer userId;
+
+    // 제조 탱크번호
+    private String tankId;
 }
