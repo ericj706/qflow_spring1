@@ -39,4 +39,18 @@ public interface Process_execution_Repository extends JpaRepository<Process_exec
             @Param("status") String status,
             Pageable pageable
     );
+
+    // 같은 LOT/공정/상태의 실행 기록이 존재하는지 확인 ->> 존재시 1보다 크게 나옴
+    @Query ("""
+              SELECT COUNT(p)
+              FROM Process_execution_Entity p
+              WHERE p.batchesEntity.batchId = :batchId
+               AND p.process_code = :processCode
+               AND p.status = :status
+              """)
+     long countByBatchAndProcessAndStatus(
+          @Param("batchId") String batchId,
+          @Param("processCode") String processCode,
+          @Param("status") String status
+     );
 }

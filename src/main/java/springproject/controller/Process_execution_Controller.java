@@ -14,8 +14,12 @@ import org.springframework.web.bind.annotation.RestController;
 import lombok.RequiredArgsConstructor;
 import springproject.model.dto.Process_execution_Dto;
 import springproject.model.dto.page.Page_response;
+import springproject.model.dto.request.Process_execution_Start_Dto;
 import springproject.model.dto.search.Process_execution_SearchDto;
 import springproject.service.Process_execution_Service;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+
 
 @RestController
 @RequestMapping("/mask/process-executions")
@@ -40,4 +44,10 @@ public class Process_execution_Controller {
     public Process_execution_Dto findOne(@PathVariable(name = "execution_id") Long execution_id) {
         return ps.findOne(execution_id);
     }
+
+    @PostMapping("")
+    public Process_execution_Dto save(@RequestBody Process_execution_Start_Dto request) {
+        return ps.save(request);
+    }
+    
 }
