@@ -1,6 +1,7 @@
 package springproject.model.repository;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -37,4 +38,5 @@ public interface Sensor_telemetry_Repository extends JpaRepository<Sensor_teleme
             @Param("userId") Integer userId,
             Pageable pageable
     );
+    List<Sensor_telemetry_Entity> findByExecutionIdInOrderByTimestampAsc(List<Long> executionIds);
 }

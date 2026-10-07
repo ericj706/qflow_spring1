@@ -1,6 +1,5 @@
 package springproject.controller;
 
-import java.util.List;
 import java.util.Map;
 
 import org.springframework.data.domain.Page;
@@ -21,19 +20,27 @@ import springproject.service.Process_execution_Service;
 @RestController
 @RequestMapping("/mask/process-executions")
 @RequiredArgsConstructor
-@CrossOrigin (origins = "http://localhost:5173")
+@CrossOrigin(origins = "http://localhost:5173")
 public class Process_execution_Controller {
+
     private final Process_execution_Service ps;
 
     // 전체조회 + 조건검색 + 페이징
     @GetMapping
     public Page_response<Process_execution_Dto> findAll(
             @ModelAttribute Process_execution_SearchDto searchDto,
-            @RequestParam(name = "page", defaultValue = "0")
-            int page
+            @RequestParam(name = "page", defaultValue = "0") int page
     ) {
         Page<Process_execution_Dto> result = ps.search(searchDto, page);
         return Page_response.from(result, Map.of());
+    }
+
+    // 실시간 공정 모니터링 대시보드 조회
+    @GetMapping("/dashboard")
+    public Process_execution_Dto.DashboardResponse getDashboardData(
+            @RequestParam(name = "batchId", required = false) String batchId
+    ) {
+        return ps.getDashboardData(batchId);
     }
 
     // PK 개별조회
@@ -42,4 +49,3 @@ public class Process_execution_Controller {
         return ps.findOne(execution_id);
     }
 }
-// Entity 직접 반환 시 연관관계 데이터까지 포함될 수 있으므로 DTO로 변환하여 반환
