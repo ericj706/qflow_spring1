@@ -11,6 +11,8 @@ import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 import springproject.model.dto.Batches_Dto;
 import springproject.model.dto.search.Batches_SearchDto;
+import springproject.model.entity.Batches_Entity;
+import springproject.model.entity.Users_Entity;
 import springproject.model.repository.Batches_Repository;
 import springproject.model.repository.Users_Repository;
 
@@ -111,4 +113,39 @@ public class Batches_Service {
                         )
                 );
     }
+
+    // ==========================================
+    // LOT 등록
+    // ==========================================
+    @Transactional
+    public Batches_Dto save(Batches_Dto dto) {
+
+    // 1. 동일한 LOT 번호가 이미 존재하는지 확인
+       if (br.existsById(dto.getBatchId())) {
+            throw new IllegalArgumentException(
+                "이미 존재하는 배치 ID입니다."
+        );
+   }
+
+   // 2. 담당자 조회
+   Users_Entity usersEntity = null;
+
+   if (dto.getUserId() != null) {
+        usersEntity = ur.findById(dto.getUserId())
+                .orElseThrow(
+                        () -> new IllegalArgumentException(
+                                "존재하지 않는 담당자입니다."
+                        )
+                );
+}
+
+   // 3. DTO → Entity 변환
+   Batches_Entity entity = dto.toEntity(usersEntity);
+
+   // 4. DB 저장
+   Batches_Entity savedEntity = br.save(entity);
+
+   // 5. Entity → DTO 변환 후 반환
+   return Batches_Dto.from(savedEntity);
+   }
 }
