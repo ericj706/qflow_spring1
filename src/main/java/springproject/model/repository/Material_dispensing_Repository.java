@@ -1,6 +1,7 @@
 package springproject.model.repository;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -49,4 +50,5 @@ public interface  Material_dispensing_Repository extends JpaRepository<Material_
             @Param("userId") Integer userId,
             Pageable pageable
     );
+    List<Material_dispensing_Entity> findByBatchId(String batchId);
 }
