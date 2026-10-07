@@ -1,6 +1,7 @@
 package springproject.model.repository;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -38,4 +39,6 @@ public interface Process_execution_Repository extends JpaRepository<Process_exec
             @Param("status") String status,
             Pageable pageable
     );
+
+    List<Process_execution_Entity> findByBatchesEntity(String batchId);
 }

@@ -37,5 +37,5 @@ public interface Bulk_qc_Repository extends JpaRepository<Bulk_qc_Entity, String
             @Param("userId") Integer userId,
             Pageable pageable
     );
-    
+    List<Bulk_qc_Entity> findByBatchId(String batchId);
 }
