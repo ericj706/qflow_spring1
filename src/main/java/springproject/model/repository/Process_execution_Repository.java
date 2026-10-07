@@ -39,6 +39,4 @@ public interface Process_execution_Repository extends JpaRepository<Process_exec
             @Param("status") String status,
             Pageable pageable
     );
-
-    List<Process_execution_Entity> findByBatchesEntity(String batchId);
 }

@@ -34,15 +34,7 @@ public class Process_execution_Controller {
         Page<Process_execution_Dto> result = ps.search(searchDto, page);
         return Page_response.from(result, Map.of());
     }
-
-    // 실시간 공정 모니터링 대시보드 조회
-    @GetMapping("/dashboard")
-    public Process_execution_Dto.DashboardResponse getDashboardData(
-            @RequestParam(name = "batchId", required = false) String batchId
-    ) {
-        return ps.getDashboardData(batchId);
-    }
-
+    
     // PK 개별조회
     @GetMapping("/{execution_id}")
     public Process_execution_Dto findOne(@PathVariable(name = "execution_id") Long execution_id) {
