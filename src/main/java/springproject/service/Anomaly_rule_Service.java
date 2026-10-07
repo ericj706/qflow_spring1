@@ -12,8 +12,7 @@ import springproject.model.dto.Anomaly_rule_Dto;
 import springproject.model.entity.Anomaly_rule_Entity;
 import springproject.model.repository.Anomaly_rule_Repository;
 
-@Service @RequiredArgsConstructor 
-@Transactional(readOnly = true)
+@Service @RequiredArgsConstructor
 public class Anomaly_rule_Service {
     private final Anomaly_rule_Repository anomaly_rule_Repository;
 
