@@ -9,6 +9,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import springproject.model.entity.Batches_Entity;
 import springproject.model.entity.Bulk_qc_Entity;
+import springproject.model.entity.Process_execution_Entity;
 import springproject.model.entity.Users_Entity;
 
 @NoArgsConstructor @AllArgsConstructor @Builder @Data 
@@ -32,16 +33,21 @@ public class Bulk_qc_Dto {
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
+    // 검사 결과와 연결된 공정 실행번호
+    private Long executionId;
+
     // DTO → Entity
     public Bulk_qc_Entity toEntity(
             Batches_Entity batchesEntity,
-            Users_Entity usersEntity) {
+            Users_Entity usersEntity,
+            Process_execution_Entity processExecutionEntity) {
 
         return Bulk_qc_Entity.builder()
                 .qc_id(this.qc_id)
                 .batchesEntity(batchesEntity)
                 .sample_time(this.sample_time)
                 .usersEntity(usersEntity)
+                .process_execution_Entity(processExecutionEntity)
                 .ph_measured(this.ph_measured)
                 .ph_criteria(this.ph_criteria)
                 .viscosity_measured(this.viscosity_measured)
@@ -82,6 +88,7 @@ public class Bulk_qc_Dto {
                 .record_source(entity.getRecord_source())
                 .createdAt(entity.getCreatedAt())
                 .updatedAt(entity.getUpdatedAt())
+                .executionId(entity.getProcess_execution_Entity() == null ? null : entity.getProcess_execution_Entity().getExecution_id())
                 .build();
     }
     

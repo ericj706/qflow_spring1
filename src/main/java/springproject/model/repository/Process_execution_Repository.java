@@ -2,14 +2,17 @@ package springproject.model.repository;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import jakarta.persistence.LockModeType;
 import springproject.model.entity.Process_execution_Entity;
 
 @Repository 
@@ -53,4 +56,21 @@ public interface Process_execution_Repository extends JpaRepository<Process_exec
           @Param("processCode") String processCode,
           @Param("status") String status
      );
+
+     // 공정 종료 처리를 위해 실행 기록 조회 및 잠금  // 공정 실행 기록 한건 잠금
+     @Lock (LockModeType.PESSIMISTIC_WRITE)
+     @Query ("""
+               SELECT p 
+               FROM Process_execution_Entity p
+               WHERE p.execution_id = :executionId
+               """)
+     Optional<Process_execution_Entity> findByIdForUpdate(@Param("executionId") Long executionId );
+
+     // 공정 실행번호로 연결된 LOT번호 조회
+     @Query ("""
+               SELECT p.batchesEntity.batchId
+               FROM Process_execution_Entity p
+               WHERE p.execution_id = :executionId
+          """)
+     Optional<String> findBatchIdByExecutionId(@Param("executionId") Long executionId);
 }

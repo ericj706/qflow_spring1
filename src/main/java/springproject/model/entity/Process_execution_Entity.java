@@ -60,4 +60,9 @@ public class Process_execution_Entity extends BaseTime{
     @ToString.Exclude
     @Builder.Default
     private List<Sensor_telemetry_Entity> sensorTelemetryList =new ArrayList<>();
+
+    @OneToMany (mappedBy = "process_execution_Entity")
+    @ToString .Exclude
+    @Builder .Default
+    private List<Bulk_qc_Entity> bulkQcList = new ArrayList<>();
 }

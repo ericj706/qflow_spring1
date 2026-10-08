@@ -37,5 +37,14 @@ public interface Bulk_qc_Repository extends JpaRepository<Bulk_qc_Entity, String
             @Param("userId") Integer userId,
             Pageable pageable
     );
+
+    // 해당 공정 실행에 연결된 벌크 검사 결과 조회
+    @Query("""
+                SELECT q
+                FROM Bulk_qc_Entity q
+                WHERE q.process_execution_Entity.execution_id = :executionId
+                ORDER BY q.sample_time DESC, q.qc_id ASC
+                """)
+    List<Bulk_qc_Entity> findByExecutionId(@Param("executionId") Long executionId );
     
 }

@@ -54,7 +54,7 @@ public interface Batches_Repository
             Pageable pageable
     );
     
-    // 공정 시작 처리 중 같은 LOT에 대한 동시 요청을 순서대로 처리  --> 한쪽에서 처리시 반대쪽 중복 요청 방지용
+    // 공정 시작 처리 중 같은 LOT에 대한 동시 요청을 순서대로 처리  --> 한쪽에서 처리시 반대쪽 중복 요청 방지용  // LOT 한건 기준
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("""
             SELECT b

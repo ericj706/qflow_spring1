@@ -13,7 +13,9 @@ import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
+import lombok.ToString;
 
 @Entity 
 @Table (name = "bulk_qc")
@@ -86,4 +88,9 @@ public class Bulk_qc_Entity extends BaseTime{
     @Column(name = "record_source", length = 20)
     private String record_source;
     
+    @ManyToOne (fetch = FetchType.LAZY)
+    @JoinColumn (name = "execution_id")
+    @ToString .Exclude
+    @EqualsAndHashCode.Exclude
+    private  Process_execution_Entity process_execution_Entity;
 }
