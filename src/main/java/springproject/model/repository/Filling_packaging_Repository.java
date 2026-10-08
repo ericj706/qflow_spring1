@@ -11,6 +11,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import springproject.model.dto.chart.Chart_Dto;
+import springproject.model.dto.chart.Dashboard_Stats_Dto;
 import springproject.model.entity.Filling_packaging_Entity;
 
 
@@ -25,12 +26,14 @@ public interface Filling_packaging_Repository extends JpaRepository<Filling_pack
             COUNT(CASE WHEN final_disposition NOT IN ('합격') OR final_disposition IS NULL THEN 1 END) AS failCount,
             ROUND((COUNT(CASE WHEN final_disposition NOT IN ('합격') OR final_disposition IS NULL THEN 1 END) / COUNT(*)) * 100, 2) AS defectRate
         FROM filling_packaging
-        WHERE (:startDate IS NULL OR :startDate = '' OR DATE_FORMAT(timestamp, '%Y-%m-%d') >= :startDate)
-          AND (:endDate IS NULL OR :endDate = '' OR DATE_FORMAT(timestamp, '%Y-%m-%d') <= :endDate)
+        WHERE (:startAt IS NULL OR timestamp >= :startAt)
+          AND (:endAtExclusive IS NULL OR timestamp < :endAtExclusive)
         GROUP BY DATE_FORMAT(timestamp, '%Y-%m-%d') 
         ORDER BY timeGroup ASC
         """, nativeQuery = true)
-    List<Chart_Dto> findDailySummary(@Param("startDate") String startDate, @Param("endDate") String endDate);
+    List<Chart_Dto> findDailySummary(
+        @Param("startAt") LocalDateTime startAt,
+        @Param("endAtExclusive") LocalDateTime endAtExclusive);
 
     // 2. 시간별 집계
     @Query(value = """
@@ -40,12 +43,14 @@ public interface Filling_packaging_Repository extends JpaRepository<Filling_pack
             COUNT(CASE WHEN final_disposition NOT IN ('합격') OR final_disposition IS NULL THEN 1 END) AS failCount,
             ROUND((COUNT(CASE WHEN final_disposition NOT IN ('합격') OR final_disposition IS NULL THEN 1 END) / COUNT(*)) * 100, 2) AS defectRate
         FROM filling_packaging
-        WHERE (:startDate IS NULL OR :startDate = '' OR DATE_FORMAT(timestamp, '%Y-%m-%d') >= :startDate)
-          AND (:endDate IS NULL OR :endDate = '' OR DATE_FORMAT(timestamp, '%Y-%m-%d') <= :endDate)
+        WHERE (:startAt IS NULL OR timestamp >= :startAt)
+          AND (:endAtExclusive IS NULL OR timestamp < :endAtExclusive)
         GROUP BY DATE_FORMAT(timestamp, '%Y-%m-%d %H:00')
         ORDER BY timeGroup ASC
         """, nativeQuery = true)
-    List<Chart_Dto> findHourlySummary(@Param("startDate") String startDate, @Param("endDate") String endDate);
+    List<Chart_Dto> findHourlySummary(
+        @Param("startAt") LocalDateTime startAt,
+        @Param("endAtExclusive") LocalDateTime endAtExclusive);
 
     // 3. LOT(배치)별 집계
     @Query(value = """
@@ -55,12 +60,14 @@ public interface Filling_packaging_Repository extends JpaRepository<Filling_pack
             COUNT(CASE WHEN final_disposition NOT IN ('합격') OR final_disposition IS NULL THEN 1 END) AS failCount,
             ROUND((COUNT(CASE WHEN final_disposition NOT IN ('합격') OR final_disposition IS NULL THEN 1 END) / COUNT(*)) * 100, 2) AS defectRate
         FROM filling_packaging
-        WHERE (:startDate IS NULL OR :startDate = '' OR DATE_FORMAT(timestamp, '%Y-%m-%d') >= :startDate)
-          AND (:endDate IS NULL OR :endDate = '' OR DATE_FORMAT(timestamp, '%Y-%m-%d') <= :endDate)
+        WHERE (:startAt IS NULL OR timestamp >= :startAt)
+          AND (:endAtExclusive IS NULL OR timestamp < :endAtExclusive)
         GROUP BY batch_id 
         ORDER BY timeGroup ASC
         """, nativeQuery = true)
-    List<Chart_Dto> findLotSummary(@Param("startDate") String startDate, @Param("endDate") String endDate);
+    List<Chart_Dto> findLotSummary(
+        @Param("startAt") LocalDateTime startAt,
+        @Param("endAtExclusive") LocalDateTime endAtExclusive);
 
     // 4. 한 LOT내에 15분 단위 집계
     @Query(value = """
@@ -73,17 +80,36 @@ public interface Filling_packaging_Repository extends JpaRepository<Filling_pack
             ROUND((COUNT(CASE WHEN final_disposition NOT IN ('합격') OR final_disposition IS NULL THEN 1 END) / COUNT(*)) * 100, 2) AS defectRate
         FROM filling_packaging
         WHERE batch_id = :batchId
-          AND (:startDate IS NULL OR :startDate = '' OR DATE_FORMAT(timestamp, '%Y-%m-%d') >= :startDate)
-          AND (:endDate IS NULL OR :endDate = '' OR DATE_FORMAT(timestamp, '%Y-%m-%d') <= :endDate)
+          AND (:startAt IS NULL OR timestamp >= :startAt)
+          AND (:endAtExclusive IS NULL OR timestamp < :endAtExclusive)
         GROUP BY timeGroup 
         ORDER BY timeGroup ASC
         """, nativeQuery = true)
     List<Chart_Dto> find15minSummary(
         @Param("batchId") String batchId,
-        @Param("startDate") String startDate,
-        @Param("endDate") String endDate);
+        @Param("startAt") LocalDateTime startAt,
+        @Param("endAtExclusive") LocalDateTime endAtExclusive);
 
-    // 5. 목록 전체조회 + 조건검색 + 페이징
+    // 5. 최근 5개 LOT 집계 (생산 시작시간 기준 최근 5개 배치)
+    @Query(value = """
+        SELECT 
+            b.batch_id AS timeGroup,
+            COUNT(CASE WHEN f.final_disposition IN ('합격') THEN 1 END) AS passCount,
+            COUNT(CASE WHEN f.pouch_id IS NOT NULL AND (f.final_disposition NOT IN ('합격') OR f.final_disposition IS NULL) THEN 1 END) AS failCount,
+            IFNULL(ROUND((COUNT(CASE WHEN f.pouch_id IS NOT NULL AND (f.final_disposition NOT IN ('합격') OR f.final_disposition IS NULL) THEN 1 END) / NULLIF(COUNT(f.pouch_id), 0)) * 100, 2), 0.00) AS defectRate
+        FROM (
+            SELECT batch_id, start_time 
+            FROM batches 
+            ORDER BY start_time DESC 
+            LIMIT 5
+        ) b
+        LEFT JOIN filling_packaging f ON b.batch_id = f.batch_id
+        GROUP BY b.batch_id, b.start_time
+        ORDER BY b.start_time ASC
+        """, nativeQuery = true)
+    List<Chart_Dto> findRecent5LotSummary();
+
+    // 6. 목록 전체조회 + 조건검색 + 페이징
     @Query("""
             SELECT f
             FROM Filling_packaging_Entity f
@@ -112,6 +138,18 @@ public interface Filling_packaging_Repository extends JpaRepository<Filling_pack
             @Param("userId") Integer userId,
             Pageable pageable
     );
-    
+
+    // 7. 대시보드 KPI 통합 조회 (6개 API → 1개 쿼리)
+    @Query(value = """
+        SELECT
+            COUNT(CASE WHEN f.batch_id = :batchId AND f.final_disposition = '합격' THEN 1 END) AS pass_count,
+            COUNT(CASE WHEN f.batch_id = :batchId AND f.final_disposition = '불합격' THEN 1 END) AS reject_count,
+            COUNT(CASE WHEN f.batch_id = :batchId THEN 1 END) AS total_count,
+            COUNT(CASE WHEN f.final_disposition = '불합격' THEN 1 END) AS global_reject_count,
+            COUNT(*) AS global_total_count,
+            (SELECT COUNT(*) FROM anomaly_event WHERE batch_id = :batchId) AS anomaly_count
+        FROM filling_packaging f
+        """, nativeQuery = true)
+    Dashboard_Stats_Dto findDashboardStats(@Param("batchId") String batchId);
 
 }
