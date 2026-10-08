@@ -65,4 +65,9 @@ public class Process_execution_Entity extends BaseTime{
     @ToString .Exclude
     @Builder .Default
     private List<Bulk_qc_Entity> bulkQcList = new ArrayList<>();
+
+    @OneToMany (mappedBy = "process_execution_Entity")
+    @ToString .Exclude
+    @Builder .Default
+    private  List<Anomaly_event_Entity> anomaly_event_List = new ArrayList<>();
 }

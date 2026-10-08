@@ -48,4 +48,13 @@ public interface Anomaly_event_Repository extends JpaRepository<Anomaly_event_En
             @Param("userId") Integer userId,
             Pageable pageable
     );
+
+    // 해당 공정 실행에서 발생한 알람 조회
+    @Query("""
+             SELECT a 
+             FROM Anomaly_event_Entity a
+             WHERE a.process_execution_Entity.execution_id = :execution_id
+             ORDER BY a.occurredAt DESC, a.anomalyId DESC
+             """)
+    List<Anomaly_event_Entity> findByExecutionId(@Param("execution_id") Long execution_id);  
 }

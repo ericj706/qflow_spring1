@@ -5,6 +5,7 @@ import java.math.RoundingMode;
 import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Set;
 
 import org.springframework.data.domain.Page;
@@ -20,8 +21,10 @@ import springproject.model.dto.Process_execution_Dto;
 import springproject.model.dto.Process_execution_Finish_Dto;
 import springproject.model.dto.request.Process_execution_Start_Dto;
 import springproject.model.dto.search.Process_execution_SearchDto;
+import springproject.model.entity.Anomaly_event_Entity;
 import springproject.model.entity.Batches_Entity;
 import springproject.model.entity.Process_execution_Entity;
+import springproject.model.repository.Anomaly_event_Repository;
 import springproject.model.repository.Batches_Repository;
 import springproject.model.repository.Process_execution_Repository;
 
@@ -167,8 +170,11 @@ public class Process_execution_Service {
         // 8. 다음 공정 명 확인 ( 일단 벌크검사까지는 자동적으로 넘어갈 예쩡)
         String nextProcessCode = getNextProcessCode(entity.getProcess_code());
 
-        // 벌크 검사 -> 최종 포장 검사는 합격 확인기능 연결 후 진행
-        boolean startNext = nextProcessCode != null && ! "벌크 검사".equals(entity.getProcess_code());
+        // 9. 현재 공정의 알람 처리 여부 확인
+        boolean alarmsHandled = checkAlarmStatus(executionId);
+        // 다음 공정이 있고 알람 처리 조건을 충족하면 자동시작
+        // 벌크 검사 이후는 합격 검증 연결 전까지 보류
+        boolean startNext = nextProcessCode != null && ! "벌크 검사".equals(entity.getProcess_code()) && alarmsHandled;
         // 9. 자동 시작할 공정이 이미 진행 중인지 확인
         if(startNext){
             long nextCount = pr.countByBatchAndProcessAndStatus(batchId, nextProcessCode, "진행중");
@@ -191,25 +197,75 @@ public class Process_execution_Service {
             nextExecution = Process_execution_Dto.from(nextSaved);
         }
 
-        return Process_execution_Finish_Dto.builder().finishedExecution(Process_execution_Dto.from(finished))
-                                            .nextExecution(nextExecution).build();
+        // 13. 다음 공정 진행 상태와 안내 메시지 결정
+        String nextProcessStatus;
+        String message;
 
-        
-
+        if (!alarmsHandled) {
+            nextProcessStatus = "알람 처리 대기";
+            message = "주의 알람 확인 또는 심각 알람 조치를 완료해 주세요.";
+        } else if ("벌크 검사".equals(entity.getProcess_code())) {
+            nextProcessStatus = "검사 확인 대기";
+            message = "벌크 검사 합격 여부 확인 후 다음 공정을 진행할 수 있습니다.";
+        } else if (nextExecution != null) {
+            nextProcessStatus = "다음 공정 시작";
+            message = nextProcessCode + " 공정이 시작되었습니다.";
+        } else {
+            nextProcessStatus = "마지막 공정 종료";
+            message = "마지막 공정이 종료되었습니다. LOT 전체 완료 처리는 별도로 확인해야 합니다.";
+        }
+        // 14. 종료 결과 반환
+        return Process_execution_Finish_Dto.builder()
+                .finishedExecution(Process_execution_Dto.from(finished))
+                .nextExecution(nextExecution)
+                .nextProcessStatus(nextProcessStatus)
+                .message(message)
+                .build();
     }
 
-        // 현재 공정에 이어서 진행할 공정으로 공정명 변경 (순서대로 공정 실행)
-        public String getNextProcessCode(String processCode){
-            if(processCode == null){throw new ResponseStatusException(HttpStatus.CONFLICT,"현재 공정명이 없습니다.");}
-            return switch(processCode){
-                case "원료 칭량"->"가열/혼합";
-                case "가열/혼합"->"냉각";
-                case "냉각"->"벌크 검사";
-                case "벌크 검사"->"최종 포장 검사";
-                case "최종 포장 검사"->null;
-                default -> throw new ResponseStatusException(HttpStatus.CONFLICT,"확인할 수 없는 공정임");
-            };
+    // 현재 공정에 이어서 진행할 공정으로 공정명 변경 (순서대로 공정 실행)
+    public String getNextProcessCode(String processCode){
+        if(processCode == null){throw new ResponseStatusException(HttpStatus.CONFLICT,"현재 공정명이 없습니다.");}
+        return switch(processCode){
+            case "원료 칭량"->"가열/혼합";
+            case "가열/혼합"->"냉각";
+            case "냉각"->"벌크 검사";
+            case "벌크 검사"->"최종 포장 검사";
+            case "최종 포장 검사"->null;
+            default -> throw new ResponseStatusException(HttpStatus.CONFLICT,"확인할 수 없는 공정임");
+        };
+    }
+
+    private final Anomaly_event_Repository anomaly_event_Repository;
+    // 현재 공정의 알람 확인 / 조치가 모두 끝났는지 검사 (내부에서만 확인하는 보조용 메소드)
+    private boolean checkAlarmStatus(Long executionId){
+        List<Anomaly_event_Entity> alarms = anomaly_event_Repository.findByExecutionId(executionId);
+        for(Anomaly_event_Entity alarm : alarms){
+            String severity = alarm.getSeverity();
+            String actionStatus = alarm.getActionStatus();
+            
+            // 정상은 별도 처리없이 통과
+            if("정상".equals(severity)){continue;}
+            // 주의는 확인 또는 조치 완료가 필요
+            if("주의".equals(severity)){
+                boolean handled = "확인됨".equals(actionStatus) || "조치완료". equals(actionStatus);
+                if(!handled){ return  false;}
+            }
+            // 심각은 조치 완료 상태와 조치 내용이 모두 필요
+            if("심각".equals(severity)){
+                String actionNote = alarm.getActionNote();
+                boolean handled = "조치완료".equals(actionStatus) && actionNote != null && !actionNote.isBlank();
+                if(!handled){return  false;}
+                continue;
+            }
+            // 심각도가 없거나 알 수 없는 값이면 진행 보류
+            return false;
         }
+        // 알람이 없거나 모든 알람의 처리 조건을 충족
+        return true;
+    }
+
+
 
 
 }

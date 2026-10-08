@@ -13,10 +13,12 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import jakarta.persistence.LockModeType;
+import springproject.model.entity.Anomaly_event_Entity;
 import springproject.model.entity.Process_execution_Entity;
 
 @Repository 
 public interface Process_execution_Repository extends JpaRepository<Process_execution_Entity, Long> {
+
     // 전체조회 + 조건검색 + 페이징
     @Query("""
             SELECT p
@@ -73,4 +75,6 @@ public interface Process_execution_Repository extends JpaRepository<Process_exec
                WHERE p.execution_id = :executionId
           """)
      Optional<String> findBatchIdByExecutionId(@Param("executionId") Long executionId);
+   
+
 }

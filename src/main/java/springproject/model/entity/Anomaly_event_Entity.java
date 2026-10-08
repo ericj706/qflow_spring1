@@ -16,7 +16,9 @@ import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
+import lombok.ToString;
 
 @Entity
 @Table(name = "anomaly_event")
@@ -127,4 +129,11 @@ public class Anomaly_event_Entity extends BaseTime{
     // 데이터 출처
     @Column(name = "source_type", length = 20)
     private String sourceType;
+
+    // 알람이 발생한 공정 
+    @ManyToOne (fetch = FetchType.LAZY)
+    @JoinColumn (name = "execution_id")
+    @ToString .Exclude
+    @EqualsAndHashCode .Exclude
+    private Process_execution_Entity process_execution_Entity;
 }
