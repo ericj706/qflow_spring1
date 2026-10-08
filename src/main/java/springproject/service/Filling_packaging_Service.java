@@ -17,6 +17,7 @@ import org.springframework.web.server.ResponseStatusException;
 import lombok.RequiredArgsConstructor;
 import springproject.model.dto.Filling_packaging_Dto;
 import springproject.model.dto.chart.Chart_Dto;
+import springproject.model.dto.chart.Dashboard_Stats_Dto;
 import springproject.model.dto.search.Filling_packaging_SearchDto;
 import springproject.model.entity.Filling_packaging_Entity;
 import springproject.model.repository.Filling_packaging_Repository;
@@ -129,24 +130,38 @@ public class Filling_packaging_Service {
 
     // 차트조회
     public List<Chart_Dto> getChartSummary(String groupBy, String batchId, String startDate, String endDate) {
-        // if ((startDate == null || startDate.trim().isEmpty()) && 
-        //     (endDate == null || endDate.trim().isEmpty())) {
-        //     LocalDate today = LocalDate.now();
-        //     endDate = today.toString();
-        //     startDate = today.minusDays(30).toString(); // 처음 페이지 진입시 30일단위만 차트 조회
-        // }
-        
+        // 날짜 문자열 → LocalDateTime 변환 (exclusive upper bound)
+        LocalDateTime startAt = null;
+        LocalDateTime endAtExclusive = null;
+
+        if (startDate != null && !startDate.trim().isEmpty()) {
+            startAt = LocalDate.parse(startDate.trim()).atStartOfDay();
+        }
+        if (endDate != null && !endDate.trim().isEmpty()) {
+            endAtExclusive = LocalDate.parse(endDate.trim()).plusDays(1).atStartOfDay();
+        }
+
         if ("15min".equalsIgnoreCase(groupBy) || "15분별".equalsIgnoreCase(groupBy)) {
             if (batchId == null || batchId.isEmpty()) {
                 return Collections.emptyList(); // batchId가 없으면 빈 리스트 반환
             }
-            return filling_packaging_Repository.find15minSummary(batchId, startDate, endDate);
+            return filling_packaging_Repository.find15minSummary(batchId, startAt, endAtExclusive);
         } else if ("hourly".equalsIgnoreCase(groupBy)) {
-            return filling_packaging_Repository.findHourlySummary(startDate, endDate);
+            return filling_packaging_Repository.findHourlySummary(startAt, endAtExclusive);
         } else if ("lot".equalsIgnoreCase(groupBy)) {
-            return filling_packaging_Repository.findLotSummary(startDate, endDate);
+            return filling_packaging_Repository.findLotSummary(startAt, endAtExclusive);
+        } else if ("recent5".equalsIgnoreCase(groupBy) || "recentLot".equalsIgnoreCase(groupBy)) {
+            return filling_packaging_Repository.findRecent5LotSummary();
         } else {
-            return filling_packaging_Repository.findDailySummary(startDate, endDate);
+            return filling_packaging_Repository.findDailySummary(startAt, endAtExclusive);
         }
     }     
+
+    // 대시보드 KPI 통합 조회
+    public Dashboard_Stats_Dto getDashboardStats(String batchId) {
+        if (batchId == null || batchId.trim().isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "batchId는 필수입니다.");
+        }
+        return filling_packaging_Repository.findDashboardStats(batchId.trim());
+    }
 }

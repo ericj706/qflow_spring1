@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.RestController;
 import lombok.RequiredArgsConstructor;
 import springproject.model.dto.Filling_packaging_Dto;
 import springproject.model.dto.chart.Chart_Dto;
+import springproject.model.dto.chart.Dashboard_Stats_Dto;
 import springproject.model.dto.page.Page_response;
 import springproject.model.dto.search.Filling_packaging_SearchDto;
 import springproject.service.Filling_packaging_Service;
@@ -49,6 +50,13 @@ public class Filling_packaging_Controller {
             @RequestParam(name = "startDate", required = false, defaultValue = "") String startDate,
             @RequestParam(name = "endDate", required = false, defaultValue = "") String endDate) {
         return filling_packaging_Service.getChartSummary(groupBy, batchId, startDate, endDate);
+    }
+
+    // 대시보드 KPI 통합 조회 (6개 API → 1개 쿼리)
+    @GetMapping("/dashboard-stats")
+    public Dashboard_Stats_Dto getDashboardStats(
+            @RequestParam(name = "batchId") String batchId) {
+        return filling_packaging_Service.getDashboardStats(batchId);
     }
     
 }
