@@ -139,7 +139,7 @@ public interface Filling_packaging_Repository extends JpaRepository<Filling_pack
             Pageable pageable
     );
 
-    // 7. 대시보드 KPI 통합 조회 (6개 API → 1개 쿼리)
+    // 7. 대시보드 종합 조회
     @Query(value = """
         SELECT
             COUNT(CASE WHEN f.batch_id = :batchId AND f.final_disposition = '합격' THEN 1 END) AS pass_count,
@@ -152,4 +152,7 @@ public interface Filling_packaging_Repository extends JpaRepository<Filling_pack
         """, nativeQuery = true)
     Dashboard_Stats_Dto findDashboardStats(@Param("batchId") String batchId);
 
+    // 8. 합/불 개수만 조회
+    @Query("SELECT f.final_disposition, COUNT(f) FROM Filling_packaging_Entity f GROUP BY f.final_disposition")
+    List<Object[]> countByFinalDispositionGroup();
 }

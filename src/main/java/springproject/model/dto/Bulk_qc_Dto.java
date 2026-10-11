@@ -26,7 +26,7 @@ public class Bulk_qc_Dto {
     private String sg_criteria;
     private String appearance_code;
     private String microbubble_code;
-    private Integer microbial_cfu;
+    private String microbial_cfu;
     private String overall_qc_result;
     private String qc_notes_code;
     private String record_source;

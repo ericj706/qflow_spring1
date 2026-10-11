@@ -26,7 +26,6 @@ import org.springframework.web.bind.annotation.RequestBody;
 @RestController
 @RequestMapping("/mask/process-executions")
 @RequiredArgsConstructor
-@CrossOrigin(origins = "http://localhost:5173")
 public class Process_execution_Controller {
 
     private final Process_execution_Service ps;

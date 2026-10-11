@@ -24,7 +24,6 @@ import springproject.service.Material_dispensing_Service;
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/mask/material-dispensing")
-@CrossOrigin(origins = "http://localhost:5173")
 public class Material_dispensing_Controller {
 
     private final Material_dispensing_Service ms;

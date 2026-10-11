@@ -4,7 +4,9 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import org.springframework.data.domain.Page;
@@ -12,6 +14,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import lombok.RequiredArgsConstructor;
@@ -119,15 +122,13 @@ public class Filling_packaging_Service {
     }
 
     // 개별조회
-    public Filling_packaging_Dto findOne(String pouch_id){
-        Optional<Filling_packaging_Entity> optional = filling_packaging_Repository.findById(pouch_id);
-        if(optional.isPresent()){
-            Filling_packaging_Entity entity = optional.get();
-            return Filling_packaging_Dto.from(entity);
-        }
-        return null;
+    @Transactional(readOnly = true)
+    public Filling_packaging_Dto findOne(String pouch_id) {
+        return filling_packaging_Repository.findById(pouch_id)
+                .map(Filling_packaging_Dto::from)
+                .orElseThrow(() -> new java.util.NoSuchElementException("해당 충진/포장 검사 기록을 찾을 수 없습니다. ID: " + pouch_id));
     }
-
+    
     // 차트조회
     public List<Chart_Dto> getChartSummary(String groupBy, String batchId, String startDate, String endDate) {
         // 날짜 문자열 → LocalDateTime 변환 (exclusive upper bound)
@@ -157,11 +158,61 @@ public class Filling_packaging_Service {
         }
     }     
 
-    // 대시보드 KPI 통합 조회
+    // 대시보드 카운트 통합 조회
     public Dashboard_Stats_Dto getDashboardStats(String batchId) {
         if (batchId == null || batchId.trim().isEmpty()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "batchId는 필수입니다.");
         }
         return filling_packaging_Repository.findDashboardStats(batchId.trim());
     }
+    // 합/불 개수만 조회
+    public Map<String, Long> getSummary() {
+        List<Object[]> counts = filling_packaging_Repository.countByFinalDispositionGroup();
+
+        long passCount = 0L;
+        long failCount = 0L;
+
+        for (Object[] row : counts) {
+            String resStr = (String) row[0];
+            Long count = (Long) row[1];
+
+            if ("합격".equals(resStr)) {
+                passCount = count;
+            } else if ("불합격".equals(resStr)) {
+                failCount = count;
+            }
+        }
+
+        Map<String, Long> summary = new HashMap<>();
+        summary.put("passCount", passCount);
+        summary.put("failCount", failCount);
+
+        return summary;
+    }
+    
+    // 최종합/불결과 및 비고 수정
+    @Transactional 
+    public Filling_packaging_Dto updateResult(String pouch_id, Filling_packaging_Dto dto) {
+        Filling_packaging_Entity entity = filling_packaging_Repository.findById(pouch_id)
+                .orElseThrow(() -> new IllegalArgumentException("해당 id를 찾을 수 없습니다: " + pouch_id));
+        if  (dto.getFinal_disposition() != null){
+            entity.setFinal_disposition(dto.getFinal_disposition());
+        }
+        // if (dto.getNote() != null) {
+        //     entity.setNote(dto.getNote());
+        // } 
+        return Filling_packaging_Dto.from(entity);       
+    }
+
+    // 최종결과 및 비고 삭제 
+    @Transactional 
+    public Filling_packaging_Dto deleteResult(String pouch_id){
+        Filling_packaging_Entity entity = filling_packaging_Repository.findById(pouch_id)
+                .orElseThrow(() -> new IllegalArgumentException("해당 id를 찾을 수 없습니다: " + pouch_id));
+        entity.setFinal_disposition(null);
+        // entity.setNote(null);
+        return Filling_packaging_Dto.from(entity);   
+    }
+
+
 }

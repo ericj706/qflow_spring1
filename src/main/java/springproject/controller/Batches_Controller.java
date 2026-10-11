@@ -20,7 +20,6 @@ import springproject.service.Batches_Service;
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/mask/batches")
-@CrossOrigin(origins = "http://localhost:5173")
 
 public class Batches_Controller {
 

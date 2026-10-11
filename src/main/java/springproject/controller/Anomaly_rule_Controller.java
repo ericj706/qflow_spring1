@@ -17,10 +17,6 @@ import lombok.RequiredArgsConstructor;
 import springproject.model.dto.Anomaly_rule_Dto;
 import springproject.service.Anomaly_rule_Service;
 
-@CrossOrigin (origins = "http://localhost:5173",
-    allowedHeaders = "*", 
-    methods = {RequestMethod.GET, RequestMethod.POST, RequestMethod.PUT, RequestMethod.DELETE, RequestMethod.OPTIONS},
-    maxAge = 3600)
 @RestController @RequiredArgsConstructor 
 @RequestMapping ("/mask/anomaly-rules")
 public class Anomaly_rule_Controller {

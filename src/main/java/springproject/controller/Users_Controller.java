@@ -15,7 +15,6 @@ import springproject.service.Users_Service;
 @RestController 
 @RequiredArgsConstructor 
 @RequestMapping ("/mask/users")
-@CrossOrigin (origins = "http://localhost:5173")
 public class Users_Controller {
     private final Users_Service us;
 

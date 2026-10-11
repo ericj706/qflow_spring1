@@ -46,5 +46,9 @@ public interface Bulk_qc_Repository extends JpaRepository<Bulk_qc_Entity, String
                 ORDER BY q.sample_time DESC, q.qc_id ASC
                 """)
     List<Bulk_qc_Entity> findByExecutionId(@Param("executionId") Long executionId );
+
+    // 합격/불합격 건수 조회
+    @Query("SELECT b.overall_qc_result, COUNT(b) FROM Bulk_qc_Entity b GROUP BY b.overall_qc_result")
+    List<Object[]> countByOverallQcResultGroup();
     
 }

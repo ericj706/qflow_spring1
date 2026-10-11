@@ -73,8 +73,8 @@ public class Bulk_qc_Entity extends BaseTime{
     private String microbubble_code;
 
     // 미생물 검사
-    @Column(name = "microbial_cfu")
-    private Integer microbial_cfu;
+    @Column(name = "microbial_cfu", length = 30)
+    private String microbial_cfu;
 
     // 종합 검사결과
     @Column(name = "overall_qc_result", length = 40)

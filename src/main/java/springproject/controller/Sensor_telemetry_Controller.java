@@ -21,7 +21,6 @@ import springproject.service.Sensor_telemetry_Service;
 @RestController 
 @RequestMapping("/mask/sensor-telemetries")
 @RequiredArgsConstructor 
-@CrossOrigin (origins = "http://localhost:5173")
 public class Sensor_telemetry_Controller {
     private final Sensor_telemetry_Service ss;
 

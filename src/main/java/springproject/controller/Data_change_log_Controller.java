@@ -19,7 +19,6 @@ import springproject.model.dto.page.Page_response;
 import springproject.model.dto.search.Data_change_log_SearchDto;
 import springproject.service.Data_change_log_Service;
 
-@CrossOrigin (origins = "http://localhost:5173")
 @RestController @RequiredArgsConstructor 
 @RequestMapping ("/mask/data-change-logs")
 public class Data_change_log_Controller {
