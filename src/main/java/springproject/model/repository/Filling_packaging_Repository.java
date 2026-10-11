@@ -152,4 +152,23 @@ public interface Filling_packaging_Repository extends JpaRepository<Filling_pack
         """, nativeQuery = true)
     Dashboard_Stats_Dto findDashboardStats(@Param("batchId") String batchId);
 
+    // 공정 실행별 포장·검사 집계 결과
+    interface ExecutionPackagingSummary {
+        Long getTotalCount();
+        Long getPassCount();
+        Long getFailCount();
+    }
+
+    // 해당 공정 실행에 등록된 제품들의 판정 건수 조회
+    @Query("""
+            SELECT
+                COUNT(f) AS totalCount,
+                COALESCE(SUM(CASE WHEN f.final_disposition = '합격'THEN 1 ELSE 0 END), 0) AS passCount,
+                COALESCE(SUM(CASE WHEN f.final_disposition = '불합격'THEN 1 ELSE 0 END), 0) AS failCount
+            FROM Filling_packaging_Entity f
+            WHERE f.process_execution_Entity.execution_id = :executionId
+            """)
+    ExecutionPackagingSummary findSummaryByExecutionId(
+            @Param("executionId") Long executionId);
+
 }

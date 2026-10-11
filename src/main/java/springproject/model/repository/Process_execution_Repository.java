@@ -76,5 +76,14 @@ public interface Process_execution_Repository extends JpaRepository<Process_exec
           """)
      Optional<String> findBatchIdByExecutionId(@Param("executionId") Long executionId);
    
-
+     // 해당 실행에서 이어서 생성된 다음 공정 조회
+     @Query("""
+               SELECT p
+               FROM Process_execution_Entity p
+               WHERE p.previousExecution.execution_id = :executionId
+          """)
+     Optional<Process_execution_Entity> findNextByExecutionId(@Param("executionId") Long executionId);
+     
+     // 해당 LOT에 공정 실행 이력이 있는지 확인
+     boolean existsByBatchesEntity_BatchId(String batchId);
 }

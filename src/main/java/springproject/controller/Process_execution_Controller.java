@@ -16,6 +16,7 @@ import lombok.RequiredArgsConstructor;
 import springproject.model.dto.Process_execution_Dto;
 import springproject.model.dto.Process_execution_Finish_Dto;
 import springproject.model.dto.page.Page_response;
+import springproject.model.dto.request.Process_execution_QcApproval_Dto;
 import springproject.model.dto.request.Process_execution_Start_Dto;
 import springproject.model.dto.search.Process_execution_SearchDto;
 import springproject.service.Process_execution_Service;
@@ -57,6 +58,21 @@ public class Process_execution_Controller {
     @PatchMapping ("/{execution_id}/finish")
     public Process_execution_Finish_Dto finish(@PathVariable(name = "execution_id") Long execution_id){
         return ps.finish(execution_id);
+    }
+
+    // 알람 처리 후 다음 공정 진행 여부 재검사
+    @PatchMapping("/{execution_id}/resume")
+    public Process_execution_Finish_Dto resume(
+            @PathVariable(name = "execution_id") Long executionId) {
+        return ps.resume(executionId);
+    }
+
+    // 벌크 검사 최종 결과 승인
+    @PatchMapping("/{execution_id}/qc-approval")
+    public Process_execution_Dto approveBulkQc(
+            @PathVariable(name = "execution_id") Long executionId,
+            @RequestBody Process_execution_QcApproval_Dto request) {
+        return ps.approveBulkQc(executionId, request);
     }
     
 }

@@ -27,6 +27,15 @@ public class Process_execution_Dto {
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
+    // 최종 승인된 벌크 검사번호
+    private String finalQcId;
+    // 최종 승인된 검사의 판정
+    private String finalQcResult;
+    // 승인 사용자번호
+    private Integer qcApprovedByUserId;
+    // 승인시간
+    private LocalDateTime qcApprovedAt;
+
     // DTO → Entity
     public Process_execution_Entity toEntity(Batches_Entity batchesEntity) {
         return Process_execution_Entity.builder()
@@ -53,6 +62,10 @@ public class Process_execution_Dto {
                 .record_source(entity.getRecord_source())
                 .createdAt(entity.getCreatedAt())
                 .updatedAt(entity.getUpdatedAt())
+                .finalQcId(entity.getFinalBulkQc() == null ? null : entity.getFinalBulkQc().getQc_id())
+                .finalQcResult(entity.getFinalBulkQc() == null ? null : entity.getFinalBulkQc().getOverall_qc_result())
+                .qcApprovedByUserId(entity.getQcApprovedBy() == null ? null : entity.getQcApprovedBy().getUserId())
+                .qcApprovedAt(entity.getQcApprovedAt())
                 .build();
     }
 

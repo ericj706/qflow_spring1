@@ -2,14 +2,17 @@ package springproject.model.repository;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import jakarta.persistence.LockModeType;
 import springproject.model.entity.Anomaly_event_Entity;
 
 @Repository 
@@ -56,5 +59,21 @@ public interface Anomaly_event_Repository extends JpaRepository<Anomaly_event_En
              WHERE a.process_execution_Entity.execution_id = :execution_id
              ORDER BY a.occurredAt DESC, a.anomalyId DESC
              """)
-    List<Anomaly_event_Entity> findByExecutionId(@Param("execution_id") Long execution_id);  
+    List<Anomaly_event_Entity> findByExecutionId(@Param("execution_id") Long execution_id);
+    
+    // 알람이 연결된 공정 실행번호 조회
+    @Query("""
+            SELECT a.process_execution_Entity.execution_id
+            FROM Anomaly_event_Entity a
+            WHERE a.anomalyId = :anomalyId
+            """)
+    Optional<Long> findExecutionIdByAnomalyId(@Param("anomalyId") Long anomalyId);
+    // 확인·조치 처리를 위한 알람 조회 및 잠금
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("""
+            SELECT a
+            FROM Anomaly_event_Entity a
+            WHERE a.anomalyId = :anomalyId
+            """)
+    Optional<Anomaly_event_Entity> findByIdForUpdate(@Param("anomalyId") Long anomalyId);
 }
