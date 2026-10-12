@@ -8,6 +8,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -21,6 +22,7 @@ import springproject.model.dto.Filling_packaging_Dto;
 import springproject.model.dto.chart.Chart_Dto;
 import springproject.model.dto.chart.Dashboard_Stats_Dto;
 import springproject.model.dto.page.Page_response;
+import springproject.model.dto.request.Filling_packaging_Result_Dto;
 import springproject.model.dto.request.Filling_packaging_Save_Dto;
 import springproject.model.dto.search.Filling_packaging_SearchDto;
 import springproject.service.Filling_packaging_Service;
@@ -69,6 +71,14 @@ public class Filling_packaging_Controller {
     @ResponseStatus(HttpStatus.CREATED)
     public Filling_packaging_Dto save(@RequestBody Filling_packaging_Save_Dto request) {
         return filling_packaging_Service.save(request);
+    }
+
+    // 제품의 검사 결과 수정
+    @PatchMapping("/{pouch_id}/result")
+    public Filling_packaging_Dto updateResult(
+            @PathVariable(name = "pouch_id") String pouchId,
+            @RequestBody Filling_packaging_Result_Dto request) {
+        return filling_packaging_Service.updateResult(pouchId, request);
     }
     
 }
