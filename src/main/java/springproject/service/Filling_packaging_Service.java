@@ -175,10 +175,59 @@ public class Filling_packaging_Service {
         return filling_packaging_Repository.findDashboardStats(batchId.trim());
     }
 
+        // 합/불 개수만 조회
+    public Map<String, Long> getSummary() {
+        List<Object[]> counts = filling_packaging_Repository.countByFinalDispositionGroup();
+
+        long passCount = 0L;
+        long failCount = 0L;
+
+        for (Object[] row : counts) {
+            String resStr = (String) row[0];
+            Long count = (Long) row[1];
+
+            if ("합격".equals(resStr)) {
+                passCount = count;
+            } else if ("불합격".equals(resStr)) {
+                failCount = count;
+            }
+        }
+        Map<String, Long> map = new HashMap<>();
+        map.put("passCount", passCount);
+        map.put("failCount", failCount);
+        return map;
+    }
+    // 최종합/불결과 및 비고 수정
+    @Transactional 
+    public Filling_packaging_Dto fixResult(String pouch_id, Filling_packaging_Dto dto) {
+        Filling_packaging_Entity entity = filling_packaging_Repository.findById(pouch_id)
+                .orElseThrow(() -> new IllegalArgumentException("해당 id를 찾을 수 없습니다: " + pouch_id));
+        if  (dto.getFinal_disposition() != null){
+            entity.setFinal_disposition(dto.getFinal_disposition());
+        }
+        //if (dto.getNote() != null){
+          //  entity.setNote(dto.getNote());
+        //}
+        return Filling_packaging_Dto.from(entity);
+    }
+        
+        
+
+    // 최종결과 및 비고 삭제 
+    @Transactional 
+    public Filling_packaging_Dto deleteResult(String pouch_id){
+        Filling_packaging_Entity entity = filling_packaging_Repository.findById(pouch_id)
+                .orElseThrow(() -> new IllegalArgumentException("해당 id를 찾을 수 없습니다: " + pouch_id));
+        entity.setFinal_disposition(null);
+        // entity.setNote(null);
+        return Filling_packaging_Dto.from(entity);   
+    }
+
     private final Batches_Repository batches_Repository;
     private final Process_execution_Repository process_execution_Repository;
     private final Users_Repository users_Repository;
 
+    
     // 포장·검사 제품 신규 등록
     @Transactional (isolation = Isolation.READ_COMMITTED)
     public Filling_packaging_Dto save(Filling_packaging_Save_Dto request) {

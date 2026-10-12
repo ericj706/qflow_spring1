@@ -95,11 +95,11 @@ public class Filling_packaging_Controller {
 
     // 최종결과 및 비고 수정
     @PutMapping("/{pouch_id}/final-result")
-    public ResponseEntity<?> updateResult(
+    public ResponseEntity<?> fixResult(
             @PathVariable (name = "pouch_id") String pouch_id,
             @RequestBody Filling_packaging_Dto dto){
         try {
-            Filling_packaging_Dto updatedDto = filling_packaging_Service.updateResult(pouch_id, dto);
+            Filling_packaging_Dto updatedDto = filling_packaging_Service.fixResult(pouch_id, dto);
             return ResponseEntity.ok(updatedDto);
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(e.getMessage());
