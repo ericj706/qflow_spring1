@@ -6,15 +6,11 @@ import java.util.Map;
 import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.CrossOrigin;
-import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -42,7 +38,7 @@ public class Filling_packaging_Controller {
             @ModelAttribute Filling_packaging_SearchDto searchDto,
             @RequestParam(name = "page", defaultValue = "0") int page) {
         Page<Filling_packaging_Dto> result = filling_packaging_Service.search(searchDto, page);
-        Map<String, Long> summary = filling_packaging_Service.getSummary();
+        Map<String, Long> summary = filling_packaging_Service.getSummary(searchDto);
         return Page_response.from(result, summary);
     }
     
@@ -90,35 +86,6 @@ public class Filling_packaging_Controller {
             @PathVariable(name = "pouch_id") String pouchId,
             @RequestBody Filling_packaging_Result_Dto request) {
         return filling_packaging_Service.updateResult(pouchId, request);
-    }
-    
-
-    // 최종결과 및 비고 수정
-    @PutMapping("/{pouch_id}/final-result")
-    public ResponseEntity<?> fixResult(
-            @PathVariable (name = "pouch_id") String pouch_id,
-            @RequestBody Filling_packaging_Dto dto){
-        try {
-            Filling_packaging_Dto updatedDto = filling_packaging_Service.fixResult(pouch_id, dto);
-            return ResponseEntity.ok(updatedDto);
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().body(e.getMessage());
-        } catch (Exception e) {
-            return ResponseEntity.internalServerError().body("충진/포장 최종 결과 수정 중 오류가 발생했습니다.");
-        }
-    }
-
-    // 최종결과 및 비고 삭제 
-    @DeleteMapping("/{pouch_id}/final-result")
-    public ResponseEntity<?> deleteResult(@PathVariable (name = "pouch_id") String pouch_id) {
-        try {
-            filling_packaging_Service.deleteResult(pouch_id);
-            return ResponseEntity.noContent().build();
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().body(e.getMessage());
-        } catch (Exception e) {
-            return ResponseEntity.internalServerError().body("충진/포장 최종 결과 삭제 중 오류가 발생했습니다.");
-        }
     }
 
 

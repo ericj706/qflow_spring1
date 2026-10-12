@@ -35,6 +35,7 @@ public class Filling_packaging_Dto {
     private String metal_detector_status;
     private String vision_inspection_status;
     private String final_disposition;
+    private String note;
     private String record_source;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
@@ -70,6 +71,7 @@ public class Filling_packaging_Dto {
                 .metal_detector_status(this.metal_detector_status)
                 .vision_inspection_status(this.vision_inspection_status)
                 .final_disposition(this.final_disposition)
+                .note(this.note)
                 .record_source(this.record_source)
                 .build();
     }
@@ -104,6 +106,7 @@ public class Filling_packaging_Dto {
                 .metal_detector_status(entity.getMetal_detector_status())
                 .vision_inspection_status(entity.getVision_inspection_status())
                 .final_disposition(entity.getFinal_disposition())
+                .note(entity.getNote())
                 .record_source(entity.getRecord_source())
                 .createdAt(entity.getCreatedAt())
                 .updatedAt(entity.getUpdatedAt())

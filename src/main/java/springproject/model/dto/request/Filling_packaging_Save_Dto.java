@@ -53,4 +53,6 @@ public class Filling_packaging_Save_Dto {
     // 최종 판정: 합격 / 불합격
     // 아직 판정하지 않았다면 null
     private String final_disposition;
+    // 비고
+    private String note;
 }
