@@ -2,14 +2,17 @@ package springproject.model.repository;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import jakarta.persistence.LockModeType;
 import springproject.model.dto.chart.Chart_Dto;
 import springproject.model.dto.chart.Dashboard_Stats_Dto;
 import springproject.model.entity.Filling_packaging_Entity;
@@ -170,5 +173,22 @@ public interface Filling_packaging_Repository extends JpaRepository<Filling_pack
             """)
     ExecutionPackagingSummary findSummaryByExecutionId(
             @Param("executionId") Long executionId);
+
+    // 제품번호로 연결된 공정 실행번호 조회
+    @Query("""
+            SELECT f.process_execution_Entity.execution_id
+            FROM Filling_packaging_Entity f
+            WHERE f.pouch_id = :pouchId
+            """)
+    Optional<Long> findExecutionIdByPouchId(@Param("pouchId") String pouchId);
+
+    // 검사 결과 수정을 위해 제품 조회 및 잠금
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("""
+            SELECT f
+            FROM Filling_packaging_Entity f
+            WHERE f.pouch_id = :pouchId
+            """)
+    Optional<Filling_packaging_Entity> findByIdForUpdate(@Param("pouchId") String pouchId);
 
 }

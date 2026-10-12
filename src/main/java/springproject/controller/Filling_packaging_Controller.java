@@ -4,12 +4,16 @@ import java.util.List;
 import java.util.Map;
 
 import org.springframework.data.domain.Page;
+import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 import lombok.RequiredArgsConstructor;
@@ -17,6 +21,7 @@ import springproject.model.dto.Filling_packaging_Dto;
 import springproject.model.dto.chart.Chart_Dto;
 import springproject.model.dto.chart.Dashboard_Stats_Dto;
 import springproject.model.dto.page.Page_response;
+import springproject.model.dto.request.Filling_packaging_Save_Dto;
 import springproject.model.dto.search.Filling_packaging_SearchDto;
 import springproject.service.Filling_packaging_Service;
 
@@ -57,6 +62,13 @@ public class Filling_packaging_Controller {
     public Dashboard_Stats_Dto getDashboardStats(
             @RequestParam(name = "batchId") String batchId) {
         return filling_packaging_Service.getDashboardStats(batchId);
+    }
+
+    // 포장·검사 제품 신규 등록
+    @PostMapping
+    @ResponseStatus(HttpStatus.CREATED)
+    public Filling_packaging_Dto save(@RequestBody Filling_packaging_Save_Dto request) {
+        return filling_packaging_Service.save(request);
     }
     
 }
