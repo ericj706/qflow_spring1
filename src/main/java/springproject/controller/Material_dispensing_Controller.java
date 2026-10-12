@@ -5,6 +5,7 @@ import java.util.Map;
 
 import org.springframework.data.domain.Page;
 import org.springframework.web.bind.annotation.CrossOrigin;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -71,4 +72,14 @@ public class Material_dispensing_Controller {
 
         return ms.update(dispenseId, dto);
     }
+    
+    // ==========================================
+    // 원료 칭량이력 삭제
+    // ==========================================
+    @DeleteMapping("/{dispenseId}")
+    public void delete(
+        @PathVariable(name = "dispenseId") String dispenseId) {
+
+        ms.delete(dispenseId);
+}
 }

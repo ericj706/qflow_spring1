@@ -20,7 +20,8 @@ public interface  Material_dispensing_Repository extends JpaRepository<Material_
             FROM Material_dispensing_Entity m
             LEFT JOIN m.batchesEntity b
             LEFT JOIN m.usersEntity u
-            WHERE (:startAt IS NULL
+            WHERE (m.status IS NULL OR m.status <> '삭제')
+              AND (:startAt IS NULL
                    OR m.dispensedAt >= :startAt)
               AND (:endAtExclusive IS NULL
                    OR m.dispensedAt < :endAtExclusive)

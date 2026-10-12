@@ -317,4 +317,31 @@ public class Material_dispensing_Service {
 
         return Material_dispensing_Dto.from(updatedEntity);
     }
+
+    // 원료 칭량 논리적 삭제 
+        @Transactional
+        public void delete(String dispenseId) {
+
+        // 1. 삭제할 원료 칭량 데이터 조회
+        Material_dispensing_Entity entity =
+                material_dispensing_Repository.findById(dispenseId)
+                        .orElseThrow(
+                                () -> new IllegalArgumentException(
+                                        "존재하지 않는 칭량 ID입니다."
+                                )
+                        );
+
+        // 2. 이미 삭제된 데이터인지 확인
+        if ("삭제".equals(entity.getStatus())) {
+                throw new IllegalStateException(
+                        "이미 삭제된 원료 칭량 데이터입니다."
+                );
+        }
+
+        // 3. 실제 삭제하지 않고 상태만 변경
+        entity.setStatus("삭제");
+
+        // 4. DB에 변경된 상태 저장
+        material_dispensing_Repository.save(entity);
+        }
 }

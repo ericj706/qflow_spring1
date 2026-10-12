@@ -65,4 +65,6 @@ public class Material_dispensing_Entity extends BaseTime{
     // 칭량상태 (VARCHAR(50))
     @Column(name = "status", length = 50)
     private String status;
+
+   
 }
