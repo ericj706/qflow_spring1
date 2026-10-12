@@ -18,5 +18,6 @@ public class Filling_packaging_Result_Dto {
     private String vision_inspection_status;
     // 최종 판정: 합격 또는 불합격
     private String final_disposition;
-    
+    // 비고
+    private String note;
 }

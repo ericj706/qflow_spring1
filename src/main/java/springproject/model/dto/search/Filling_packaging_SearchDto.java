@@ -39,4 +39,7 @@ public class Filling_packaging_SearchDto {
 
     // 담당자 번호
     private Integer userId;
+    
+    // 비고
+    private String note;
 }

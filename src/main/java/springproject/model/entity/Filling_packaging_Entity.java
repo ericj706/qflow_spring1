@@ -116,6 +116,10 @@ public class Filling_packaging_Entity extends BaseTime{
     @Column(name = "final_disposition", length = 40)
     private String final_disposition;
 
+    // 비고
+    @Column(name = "note", length = 100)
+    private String note;
+
     // 데이터 출처
     @Column(name = "record_source", length = 20)
     private String record_source;

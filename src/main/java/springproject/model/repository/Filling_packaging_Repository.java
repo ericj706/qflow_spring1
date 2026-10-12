@@ -194,4 +194,7 @@ public interface Filling_packaging_Repository extends JpaRepository<Filling_pack
     // 8. 합/불 개수만 조회
     @Query("SELECT f.final_disposition, COUNT(f) FROM Filling_packaging_Entity f GROUP BY f.final_disposition")
     List<Object[]> countByFinalDispositionGroup();
+
+    // 9.최근6개월 데이터 조회
+    
 }
