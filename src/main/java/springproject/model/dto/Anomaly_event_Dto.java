@@ -11,6 +11,7 @@ import springproject.model.entity.Anomaly_event_Entity;
 import springproject.model.entity.Anomaly_rule_Entity;
 import springproject.model.entity.Batches_Entity;
 import springproject.model.entity.Filling_packaging_Entity;
+import springproject.model.entity.Process_execution_Entity;
 import springproject.model.entity.Users_Entity;
 
 @NoArgsConstructor @AllArgsConstructor @Builder @Data 
@@ -37,12 +38,15 @@ public class Anomaly_event_Dto {
         private LocalDateTime createdAt;
         private LocalDateTime updatedAt;
 
+        private Long executionId;
+
         // DTO → Entity
         public Anomaly_event_Entity toEntity(
                 Batches_Entity batches_Entity,
                 Filling_packaging_Entity filling_packaging_Entity,
                 Anomaly_rule_Entity anomaly_rule_Entity,
-                Users_Entity users_Entity) {
+                Users_Entity users_Entity,
+                Process_execution_Entity processExecutionEntity) {
 
                 return Anomaly_event_Entity.builder()
                         // anomalyId는 자동 증가이므로 제외
@@ -64,6 +68,7 @@ public class Anomaly_event_Dto {
                         .users_Entity(users_Entity)
                         .actionTime(this.actionTime)
                         .sourceType(this.sourceType)
+                        .process_execution_Entity(processExecutionEntity)
                         .build();
         }
 
@@ -99,6 +104,7 @@ public class Anomaly_event_Dto {
                         .sourceType(entity.getSourceType())
                         .createdAt(entity.getCreatedAt())
                         .updatedAt(entity.getUpdatedAt())
+                        .executionId(entity.getProcess_execution_Entity() == null ? null : entity.getProcess_execution_Entity().getExecution_id())
                         .build();
         }
 }

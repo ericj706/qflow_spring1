@@ -13,10 +13,12 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import jakarta.persistence.LockModeType;
+import springproject.model.entity.Anomaly_event_Entity;
 import springproject.model.entity.Process_execution_Entity;
 
 @Repository 
 public interface Process_execution_Repository extends JpaRepository<Process_execution_Entity, Long> {
+
     // 전체조회 + 조건검색 + 페이징
     @Query("""
             SELECT p
@@ -73,4 +75,20 @@ public interface Process_execution_Repository extends JpaRepository<Process_exec
                WHERE p.execution_id = :executionId
           """)
      Optional<String> findBatchIdByExecutionId(@Param("executionId") Long executionId);
+   
+     // 해당 실행에서 이어서 생성된 다음 공정 조회
+     @Query("""
+               SELECT p
+               FROM Process_execution_Entity p
+               WHERE p.previousExecution.execution_id = :executionId
+          """)
+     Optional<Process_execution_Entity> findNextByExecutionId(@Param("executionId") Long executionId);
+     
+     // 해당 LOT에 공정 실행 이력이 있는지 확인
+     @Query("""
+          SELECT CASE WHEN COUNT(p) > 0 THEN true ELSE false END
+          FROM Process_execution_Entity p
+          WHERE p.batchesEntity.batchId = :batchId
+          """)
+     boolean existsByBatchesEntity_BatchId(@Param("batchId") String batchId);
 }

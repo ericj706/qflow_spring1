@@ -9,6 +9,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import springproject.model.entity.Batches_Entity;
 import springproject.model.entity.Filling_packaging_Entity;
+import springproject.model.entity.Process_execution_Entity;
 import springproject.model.entity.Users_Entity;
 
 @NoArgsConstructor @AllArgsConstructor @Builder @Data 
@@ -37,16 +38,20 @@ public class Filling_packaging_Dto {
     private String record_source;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+    // 공정 실행번호
+    private Long executionId;
 
     // DTO → Entity
     public Filling_packaging_Entity toEntity(
             Batches_Entity batchesEntity,
-            Users_Entity usersEntity) {
+            Users_Entity usersEntity,
+            Process_execution_Entity processExecutionEntity) {
 
         return Filling_packaging_Entity.builder()
                 .pouch_id(this.pouch_id)
                 .batchesEntity(batchesEntity)
                 .usersEntity(usersEntity)
+                .process_execution_Entity(processExecutionEntity)
                 .packaging_line(this.packaging_line)
                 .timestamp(this.timestamp)
                 .sheet_material_code(this.sheet_material_code)
@@ -102,6 +107,7 @@ public class Filling_packaging_Dto {
                 .record_source(entity.getRecord_source())
                 .createdAt(entity.getCreatedAt())
                 .updatedAt(entity.getUpdatedAt())
+                .executionId(entity.getProcess_execution_Entity() == null ? null: entity.getProcess_execution_Entity().getExecution_id())
                 .build();
     }
 }

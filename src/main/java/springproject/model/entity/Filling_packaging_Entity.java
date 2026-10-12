@@ -38,6 +38,12 @@ public class Filling_packaging_Entity extends BaseTime{
     @JoinColumn(name = "user_id")
     private Users_Entity usersEntity;
 
+    // 공정 실행번호 FK — 새로 추가
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "execution_id")
+    @ToString.Exclude
+    private Process_execution_Entity process_execution_Entity;
+
     // 포장라인
     @Column(name = "packaging_line", length = 40)
     private String packaging_line;

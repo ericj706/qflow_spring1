@@ -2,14 +2,17 @@ package springproject.model.repository;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import jakarta.persistence.LockModeType;
 import springproject.model.dto.chart.Chart_Dto;
 import springproject.model.dto.chart.Dashboard_Stats_Dto;
 import springproject.model.entity.Filling_packaging_Entity;
@@ -151,6 +154,42 @@ public interface Filling_packaging_Repository extends JpaRepository<Filling_pack
         FROM filling_packaging f
         """, nativeQuery = true)
     Dashboard_Stats_Dto findDashboardStats(@Param("batchId") String batchId);
+
+    // 공정 실행별 포장·검사 집계 결과
+    interface ExecutionPackagingSummary {
+        Long getTotalCount();
+        Long getPassCount();
+        Long getFailCount();
+    }
+
+    // 해당 공정 실행에 등록된 제품들의 판정 건수 조회
+    @Query("""
+            SELECT
+                COUNT(f) AS totalCount,
+                COALESCE(SUM(CASE WHEN f.final_disposition = '합격'THEN 1 ELSE 0 END), 0) AS passCount,
+                COALESCE(SUM(CASE WHEN f.final_disposition = '불합격'THEN 1 ELSE 0 END), 0) AS failCount
+            FROM Filling_packaging_Entity f
+            WHERE f.process_execution_Entity.execution_id = :executionId
+            """)
+    ExecutionPackagingSummary findSummaryByExecutionId(
+            @Param("executionId") Long executionId);
+
+    // 제품번호로 연결된 공정 실행번호 조회
+    @Query("""
+            SELECT f.process_execution_Entity.execution_id
+            FROM Filling_packaging_Entity f
+            WHERE f.pouch_id = :pouchId
+            """)
+    Optional<Long> findExecutionIdByPouchId(@Param("pouchId") String pouchId);
+
+    // 검사 결과 수정을 위해 제품 조회 및 잠금
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("""
+            SELECT f
+            FROM Filling_packaging_Entity f
+            WHERE f.pouch_id = :pouchId
+            """)
+    Optional<Filling_packaging_Entity> findByIdForUpdate(@Param("pouchId") String pouchId);
 
     // 8. 합/불 개수만 조회
     @Query("SELECT f.final_disposition, COUNT(f) FROM Filling_packaging_Entity f GROUP BY f.final_disposition")

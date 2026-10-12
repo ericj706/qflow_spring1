@@ -14,10 +14,12 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
+import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
 import lombok.ToString;
 
@@ -65,4 +67,31 @@ public class Process_execution_Entity extends BaseTime{
     @ToString .Exclude
     @Builder .Default
     private List<Bulk_qc_Entity> bulkQcList = new ArrayList<>();
+
+    @OneToMany (mappedBy = "process_execution_Entity")
+    @ToString .Exclude
+    @Builder .Default
+    private  List<Anomaly_event_Entity> anomaly_event_List = new ArrayList<>();
+
+    // 이 실행을 자동 시작시킨 이전 공정 실행
+    @OneToOne (fetch = FetchType.LAZY)
+    @JoinColumn(name = "previous_execution_id", unique = true)
+    @ToString.Exclude
+    private Process_execution_Entity previousExecution;
+
+    // 해당 벌크 검사 공정에서 최종 승인한 검사 결과
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "final_qc_id")
+    @ToString.Exclude
+    private Bulk_qc_Entity finalBulkQc;
+
+    // 최종 검사 결과를 승인한 사용자
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "qc_approved_by")
+    @ToString.Exclude
+    private Users_Entity qcApprovedBy;
+
+    // 최종 검사 승인시간
+    @Column(name = "qc_approved_at")
+    private LocalDateTime qcApprovedAt;
 }

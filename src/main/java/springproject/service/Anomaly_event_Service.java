@@ -16,9 +16,17 @@ import org.springframework.web.server.ResponseStatusException;
 
 import lombok.RequiredArgsConstructor;
 import springproject.model.dto.Anomaly_event_Dto;
+import springproject.model.dto.request.Anomaly_event_Action_Dto;
+import springproject.model.dto.request.Anomaly_event_Confirm_Dto;
 import springproject.model.dto.search.Anomaly_event_SearchDto;
 import springproject.model.entity.Anomaly_event_Entity;
+import springproject.model.entity.Batches_Entity;
+import springproject.model.entity.Process_execution_Entity;
+import springproject.model.entity.Users_Entity;
 import springproject.model.repository.Anomaly_event_Repository;
+import springproject.model.repository.Batches_Repository;
+import springproject.model.repository.Process_execution_Repository;
+import springproject.model.repository.Users_Repository;
 
 @Service @RequiredArgsConstructor 
 @Transactional (readOnly = true)
@@ -138,6 +146,177 @@ public class Anomaly_event_Service {
             Anomaly_event_Entity entity = optional.get();
             return Anomaly_event_Dto.from(entity);
         }return null;
+    }
+
+    private final Process_execution_Repository process_execution_Repository;
+
+    // 해당 공정 실행에서 발생한 알람 목록 조회
+    public List<Anomaly_event_Dto> findByExecutionId(Long executionId){
+        // 실행번호 확인
+        if(executionId == null || executionId <= 0){throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"올바른 공정 실행번호를 입력해 주세요.");}
+        // 공정 실행 존재 여부 확인
+        if (!process_execution_Repository.existsById(executionId)) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND,"해당 공정 실행 기록이 없습니다.");}
+        // 해당 실행에 연결된 알람 조회
+        List<Anomaly_event_Entity> entities = anomaly_event_Repository.findByExecutionId(executionId);
+        // Entity → DTO 변환
+        List<Anomaly_event_Dto> result = new ArrayList<>();
+        for (Anomaly_event_Entity entity : entities) {
+            result.add(Anomaly_event_Dto.from(entity));
+        }
+        return result;
+    }
+
+    private final Batches_Repository batches_Repository;
+    private final Users_Repository users_Repository;
+
+    // 주의 알람 확인 처리
+    @Transactional
+    public Anomaly_event_Dto confirm(Long anomalyId, Anomaly_event_Confirm_Dto request) {
+        // 1. 알람번호 확인
+        if (anomalyId == null || anomalyId <= 0) {throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"올바른 알람번호를 입력해 주세요.");}
+        // 2. 사용자번호 확인
+        if (request == null || request.getUserId() == null || request.getUserId() <= 0) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"확인한 사용자 번호를 입력해 주세요.");}
+        // 3. 사용자 조회
+        Users_Entity user = users_Repository.findById(request.getUserId()).orElse(null);
+        if (user == null) {throw new ResponseStatusException(HttpStatus.NOT_FOUND,"해당 사용자가 없습니다.");}
+        // 4. 알람에 연결된 공정 실행번호 조회
+        Long executionId = anomaly_event_Repository.findExecutionIdByAnomalyId(anomalyId).orElse(null);
+        if (executionId == null) {throw new ResponseStatusException(HttpStatus.CONFLICT,"알람이 없거나 공정 실행이 연결되어 있지 않습니다.");}
+        // 5. 공정 실행에 연결된 LOT 번호 조회
+        String batchId = process_execution_Repository.findBatchIdByExecutionId(executionId).orElse(null);
+        if (batchId == null) {throw new ResponseStatusException(HttpStatus.CONFLICT,"공정 실행에 연결된 LOT를 확인해 주세요.");}
+        // 6. LOT 잠금
+        Batches_Entity batch = batches_Repository.findByIdForUpdate(batchId).orElse(null);
+        if (batch == null) {throw new ResponseStatusException(HttpStatus.NOT_FOUND,"해당 LOT가 없습니다.");}
+        // 7. 공정 실행 잠금
+        Process_execution_Entity execution = process_execution_Repository.findByIdForUpdate(executionId).orElse(null);
+        if (execution == null) {throw new ResponseStatusException(HttpStatus.NOT_FOUND,"해당 공정 실행 기록이 없습니다.");}
+        // 8. 알람 조회 및 잠금
+        Anomaly_event_Entity alarm = anomaly_event_Repository.findByIdForUpdate(anomalyId).orElse(null);
+        if (alarm == null) {throw new ResponseStatusException(HttpStatus.NOT_FOUND,"해당 알람이 없습니다.");}
+        // 9. 잠금 전에 조회한 공정 실행과 같은지 확인
+        if (alarm.getProcess_execution_Entity() == null || !executionId.equals(alarm.getProcess_execution_Entity().getExecution_id())) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,"알람의 공정 연결이 변경되었습니다. 다시 조회해 주세요.");}
+        // 10. 주의 알람만 확인 처리
+        if (!"주의".equals(alarm.getSeverity())) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,"주의 알람만 확인 처리할 수 있습니다. 심각 알람은 조치가 필요합니다.");
+        }
+        // 11. 이미 처리했다면 기존 결과 반환
+        // 최초 확인자와 처리시간을 덮어쓰지 않음
+        if ("확인됨".equals(alarm.getActionStatus()) || "조치완료".equals(alarm.getActionStatus())) {return Anomaly_event_Dto.from(alarm);}
+        // 12. 미확인 상태만 변경
+        if (!"미확인".equals(alarm.getActionStatus())) {throw new ResponseStatusException(HttpStatus.CONFLICT,"알람의 조치 상태를 확인해 주세요.");}
+        // 13. 확인 결과 저장
+        alarm.setActionStatus("확인됨");
+        alarm.setUsers_Entity(user);
+        alarm.setActionTime(LocalDateTime.now());
+
+        Anomaly_event_Entity saved = anomaly_event_Repository.save(alarm);
+        return Anomaly_event_Dto.from(saved);
+    }
+
+    // 심각 알람 조치 완료 처리
+    @Transactional
+    public Anomaly_event_Dto completeAction(
+            Long anomalyId, Anomaly_event_Action_Dto request) {
+        // 1. 알람번호 확인
+        if (anomalyId == null || anomalyId <= 0) {
+            throw new ResponseStatusException(
+                HttpStatus.BAD_REQUEST,"올바른 알람번호를 입력해 주세요.");
+        }
+        // 2. 사용자번호 확인
+        if (request == null || request.getUserId() == null || request.getUserId() <= 0) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"조치한 사용자 번호를 입력해 주세요.");
+        }
+
+        // 3. 조치내용 확인
+        if (request.getActionNote() == null || request.getActionNote().isBlank()) {
+            throw new ResponseStatusException(
+                HttpStatus.BAD_REQUEST,"조치내용을 입력해 주세요.");
+        }
+
+        String actionNote = request.getActionNote().strip();
+
+        // 4. 사용자 조회
+        Users_Entity user = users_Repository.findById(request.getUserId()).orElse(null);
+        if (user == null) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND,"해당 사용자가 없습니다.");
+        }
+        // 5. 알람에 연결된 공정 실행번호 조회
+        Long executionId = anomaly_event_Repository.findExecutionIdByAnomalyId(anomalyId).orElse(null);
+        if (executionId == null) {
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT,"알람이 없거나 공정 실행이 연결되어 있지 않습니다.");
+        }
+        // 6. LOT 번호 조회
+        String batchId = process_execution_Repository.findBatchIdByExecutionId(executionId).orElse(null);
+        if (batchId == null) {
+            throw new ResponseStatusException(
+                HttpStatus.CONFLICT,"공정 실행에 연결된 LOT를 확인해 주세요.");
+        }
+        // 7. LOT 잠금
+        Batches_Entity batch = batches_Repository.findByIdForUpdate(batchId).orElse(null);
+        if (batch == null) {
+            throw new ResponseStatusException(
+                    HttpStatus.NOT_FOUND,"해당 LOT가 없습니다.");
+        }
+        // 8. 공정 실행 잠금
+        Process_execution_Entity execution = process_execution_Repository.findByIdForUpdate(executionId).orElse(null);
+        if (execution == null) {
+            throw new ResponseStatusException(
+                    HttpStatus.NOT_FOUND,"해당 공정 실행 기록이 없습니다.");
+        }
+        // 9. 알람 조회 및 잠금
+        Anomaly_event_Entity alarm = anomaly_event_Repository.findByIdForUpdate(anomalyId).orElse(null);
+        if (alarm == null) {
+            throw new ResponseStatusException(
+                    HttpStatus.NOT_FOUND,"해당 알람이 없습니다.");
+        }
+        // 10. 알람의 공정 연결 확인
+        if (alarm.getProcess_execution_Entity() == null
+                || !executionId.equals(
+                        alarm.getProcess_execution_Entity().getExecution_id())) {
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT,"알람의 공정 연결이 변경되었습니다. 다시 조회해 주세요.");
+        }
+        // 11. 심각 알람만 처리
+        if (!"심각".equals(alarm.getSeverity())) {
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT,"심각 알람만 이 기능으로 조치 완료할 수 있습니다.");
+        }
+        // 12. 이미 조치 완료된 경우
+        if ("조치완료".equals(alarm.getActionStatus())) {
+            // 같은 요청의 재전송이면 기존 결과 반환
+            boolean sameUser = alarm.getUsers_Entity() != null
+                                  && request.getUserId().equals(
+                                       alarm.getUsers_Entity().getUserId());
+
+            boolean sameNote = actionNote.equals(alarm.getActionNote());
+            if (sameUser && sameNote) {return Anomaly_event_Dto.from(alarm);}
+            // 기존 조치 기록을 새 요청으로 덮어쓰지 않음
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT,"이미 조치 완료된 알람입니다. 기존 조치내역을 확인해 주세요.");
+        }
+
+        // 13. 처리 가능한 상태인지 확인
+        String actionStatus = alarm.getActionStatus();
+        if (!"미확인".equals(actionStatus)
+                && !"확인됨".equals(actionStatus)
+                && !"조치중".equals(actionStatus)) {
+            throw new ResponseStatusException(
+                HttpStatus.CONFLICT,"알람의 조치 상태를 확인해 주세요.");
+        }
+
+        // 14. 조치 결과 저장
+        alarm.setActionNote(actionNote);
+        alarm.setActionStatus("조치완료");
+        alarm.setUsers_Entity(user);
+        alarm.setActionTime(LocalDateTime.now());
+
+        Anomaly_event_Entity saved = anomaly_event_Repository.save(alarm);
+        return Anomaly_event_Dto.from(saved);
     }
 
     
