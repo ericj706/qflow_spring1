@@ -17,7 +17,6 @@ import springproject.model.dto.chart.Chart_Dto;
 import springproject.model.dto.chart.Dashboard_Stats_Dto;
 import springproject.model.entity.Filling_packaging_Entity;
 
-
 @Repository
 public interface Filling_packaging_Repository extends JpaRepository<Filling_packaging_Entity, String> {
 
@@ -93,7 +92,7 @@ public interface Filling_packaging_Repository extends JpaRepository<Filling_pack
         @Param("startAt") LocalDateTime startAt,
         @Param("endAtExclusive") LocalDateTime endAtExclusive);
 
-    // 5. 최근 5개 LOT 집계 (생산 시작시간 기준 최근 5개 배치)
+    // 5. 최근 5개 LOT 집계
     @Query(value = """
         SELECT 
             b.batch_id AS timeGroup,
@@ -112,7 +111,7 @@ public interface Filling_packaging_Repository extends JpaRepository<Filling_pack
         """, nativeQuery = true)
     List<Chart_Dto> findRecent5LotSummary();
 
-    // 6. 목록 전체조회 + 조건검색 + 페이징
+    // 6. 목록 전체조회 + 조건검색 + 페이징 (시작일/종료일 조건 연동)
     @Query("""
             SELECT f
             FROM Filling_packaging_Entity f
@@ -155,26 +154,22 @@ public interface Filling_packaging_Repository extends JpaRepository<Filling_pack
         """, nativeQuery = true)
     Dashboard_Stats_Dto findDashboardStats(@Param("batchId") String batchId);
 
-    // 공정 실행별 포장·검사 집계 결과
     interface ExecutionPackagingSummary {
         Long getTotalCount();
         Long getPassCount();
         Long getFailCount();
     }
 
-    // 해당 공정 실행에 등록된 제품들의 판정 건수 조회
     @Query("""
             SELECT
                 COUNT(f) AS totalCount,
-                COALESCE(SUM(CASE WHEN f.final_disposition = '합격'THEN 1 ELSE 0 END), 0) AS passCount,
-                COALESCE(SUM(CASE WHEN f.final_disposition = '불합격'THEN 1 ELSE 0 END), 0) AS failCount
+                COALESCE(SUM(CASE WHEN f.final_disposition = '합격' THEN 1 ELSE 0 END), 0) AS passCount,
+                COALESCE(SUM(CASE WHEN f.final_disposition = '불합격' THEN 1 ELSE 0 END), 0) AS failCount
             FROM Filling_packaging_Entity f
             WHERE f.process_execution_Entity.execution_id = :executionId
             """)
-    ExecutionPackagingSummary findSummaryByExecutionId(
-            @Param("executionId") Long executionId);
+    ExecutionPackagingSummary findSummaryByExecutionId(@Param("executionId") Long executionId);
 
-    // 제품번호로 연결된 공정 실행번호 조회
     @Query("""
             SELECT f.process_execution_Entity.execution_id
             FROM Filling_packaging_Entity f
@@ -182,7 +177,6 @@ public interface Filling_packaging_Repository extends JpaRepository<Filling_pack
             """)
     Optional<Long> findExecutionIdByPouchId(@Param("pouchId") String pouchId);
 
-    // 검사 결과 수정을 위해 제품 조회 및 잠금
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("""
             SELECT f
@@ -191,10 +185,16 @@ public interface Filling_packaging_Repository extends JpaRepository<Filling_pack
             """)
     Optional<Filling_packaging_Entity> findByIdForUpdate(@Param("pouchId") String pouchId);
 
-    // 8. 합/불 개수만 조회
-    @Query("SELECT f.final_disposition, COUNT(f) FROM Filling_packaging_Entity f GROUP BY f.final_disposition")
-    List<Object[]> countByFinalDispositionGroup();
-
-    // 9.최근6개월 데이터 조회
-    
+    // 8. 날짜 범위 조건을 전달받아 상단 요약 카드 집계 (목록과 건수 일치)
+    @Query("""
+            SELECT TRIM(f.final_disposition), COUNT(f) 
+            FROM Filling_packaging_Entity f 
+            WHERE (:startAt IS NULL OR f.timestamp >= :startAt)
+              AND (:endAtExclusive IS NULL OR f.timestamp < :endAtExclusive)
+            GROUP BY TRIM(f.final_disposition)
+            """)
+    List<Object[]> countByFinalDispositionGroup(
+            @Param("startAt") LocalDateTime startAt,
+            @Param("endAtExclusive") LocalDateTime endAtExclusive
+    );
 }

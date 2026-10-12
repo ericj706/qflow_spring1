@@ -41,17 +41,15 @@ public class Filling_packaging_Service {
     private final Process_execution_Repository process_execution_Repository;
     private final Users_Repository users_Repository;
 
-    // 1. 전체조회 + 조건검색 + 페이징
+    // 1. 전체조회 + 조건검색 + 페이징 (초기 진입 시 최근 6개월 범위 기본값 처리)
     public Page<Filling_packaging_Dto> search(
             Filling_packaging_SearchDto searchDto,
             int page) {
 
-        // 페이지 번호 확인
         if (page < 0) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "페이지 번호는 0 이상이어야 합니다.");
         }
 
-        // 검색조건 추출
         LocalDate startDate = searchDto.getStartDate();
         LocalDate endDate = searchDto.getEndDate();
         String batchId = searchDto.getBatchId();
@@ -62,28 +60,24 @@ public class Filling_packaging_Service {
         String visionInspectionStatus = searchDto.getVisionInspectionStatus();
         Integer userId = searchDto.getUserId();
 
-        // 초기 진입 시 날짜 조건이 없으면(null) 기본적으로 최근 6개월 범위 적용
+        // 💡 페이지 처음 진입 시(날짜 선택 안 함): endDate = 오늘, startDate = 6개월 전 자동 설정
         if (startDate == null && endDate == null) {
-            startDate = LocalDate.now().minusMonths(6);
             endDate = LocalDate.now();
+            startDate = endDate.minusMonths(6);
         }
 
-        // 검색기간 확인
         if (startDate != null && endDate != null && startDate.isAfter(endDate)) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "시작일은 종료일보다 늦을 수 없습니다.");
         }
 
-        // 종료일 범위 확인
         if (LocalDate.MAX.equals(endDate)) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "종료일의 범위를 확인해 주세요.");
         }
 
-        // 담당자 번호 확인
         if (userId != null && userId <= 0) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "담당자 번호는 1 이상이어야 합니다.");
         }
 
-        // 문자열 공백 제거 및 빈 문자열 null 처리
         if (batchId != null) {
             batchId = batchId.trim();
             if (batchId.isEmpty()) { batchId = null; }
@@ -109,14 +103,9 @@ public class Filling_packaging_Service {
             if (visionInspectionStatus.isEmpty()) { visionInspectionStatus = null; }
         }
 
-        // LocalDateTime 범위 설정
-        LocalDateTime startAt = null;
-        if (startDate != null) { startAt = startDate.atStartOfDay(); }
+        LocalDateTime startAt = (startDate != null) ? startDate.atStartOfDay() : null;
+        LocalDateTime endAtExclusive = (endDate != null) ? endDate.plusDays(1).atStartOfDay() : null;
 
-        LocalDateTime endAtExclusive = null;
-        if (endDate != null) { endAtExclusive = endDate.plusDays(1).atStartOfDay(); }
-
-        // 페이징 (페이지당 20개 고정)
         Pageable pageable = PageRequest.of(page, 20);
         Page<Filling_packaging_Entity> result =
                 filling_packaging_Repository.search(
@@ -179,15 +168,28 @@ public class Filling_packaging_Service {
         return filling_packaging_Repository.findDashboardStats(batchId.trim());
     }
 
-    // 5. 합/불 개수 요약 조회
-    public Map<String, Long> getSummary() {
-        List<Object[]> counts = filling_packaging_Repository.countByFinalDispositionGroup();
+    // 5. 합/불 개수 요약 조회 (목록 조회 조건과 동일한 6개월 필터 적용)
+    public Map<String, Long> getSummary(Filling_packaging_SearchDto searchDto) {
+        LocalDate startDate = searchDto.getStartDate();
+        LocalDate endDate = searchDto.getEndDate();
+
+        if (startDate == null && endDate == null) {
+            endDate = LocalDate.now();
+            startDate = endDate.minusMonths(6);
+        }
+
+        LocalDateTime startAt = (startDate != null) ? startDate.atStartOfDay() : null;
+        LocalDateTime endAtExclusive = (endDate != null) ? endDate.plusDays(1).atStartOfDay() : null;
+
+        List<Object[]> counts = filling_packaging_Repository.countByFinalDispositionGroup(startAt, endAtExclusive);
 
         long passCount = 0L;
         long failCount = 0L;
 
         for (Object[] row : counts) {
-            String resStr = (String) row[0];
+            if (row[0] == null) continue;
+
+            String resStr = ((String) row[0]).trim();
             Long count = (Long) row[1];
 
             if ("합격".equals(resStr)) {
@@ -301,14 +303,14 @@ public class Filling_packaging_Service {
                         .vision_inspection_status(request.getVision_inspection_status())
                         .final_disposition(finalDisposition)
                         .record_source("수동입력")
-                        .note(request.getNote()) // 신규 등록 시 비고 항목 저장
+                        .note(request.getNote())
                         .build();
 
         Filling_packaging_Entity saved = filling_packaging_Repository.save(entity);
         return Filling_packaging_Dto.from(saved);
     }
 
-    // 7. 등록된 제품의 검사 결과, 판정 및 비고 수정 (단일 통합 수정 메서드)
+    // 7. 제품의 검사 결과, 판정 및 비고 수정
     @Transactional(isolation = Isolation.READ_COMMITTED)
     public Filling_packaging_Dto updateResult(
             String pouchId,
@@ -355,7 +357,6 @@ public class Filling_packaging_Service {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "해당 공정 실행이 없습니다.");
         }
 
-        // DB PESSIMISTIC_WRITE 락 적용 후 제품 조회
         Filling_packaging_Entity entity = filling_packaging_Repository.findByIdForUpdate(pouchId).orElse(null);
         if (entity == null) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "해당 제품이 없습니다.");
@@ -383,7 +384,6 @@ public class Filling_packaging_Service {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "해당 담당자가 없습니다.");
         }
 
-        // 세부 검사 항목 수정 (null이 아니면 검증 후 반영)
         String checkweigherStatus = request.getCheckweigher_status();
         String metalDetectorStatus = request.getMetal_detector_status();
         String visionInspectionStatus = request.getVision_inspection_status();
@@ -412,7 +412,6 @@ public class Filling_packaging_Service {
             entity.setVision_inspection_status(visionInspectionStatus);
         }
 
-        // 비고(note) 수정 항목 반영
         if (request.getNote() != null) {
             entity.setNote(request.getNote());
         }

@@ -38,7 +38,7 @@ public class Filling_packaging_Controller {
             @ModelAttribute Filling_packaging_SearchDto searchDto,
             @RequestParam(name = "page", defaultValue = "0") int page) {
         Page<Filling_packaging_Dto> result = filling_packaging_Service.search(searchDto, page);
-        Map<String, Long> summary = filling_packaging_Service.getSummary();
+        Map<String, Long> summary = filling_packaging_Service.getSummary(searchDto);
         return Page_response.from(result, summary);
     }
     
