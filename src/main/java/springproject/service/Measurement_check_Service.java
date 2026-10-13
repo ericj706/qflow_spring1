@@ -66,22 +66,31 @@ public class Measurement_check_Service {
     }
 
     // 규칙의 상한/하한 설정 검증
-    private void validateRuleRange(BigDecimal criticalMin,BigDecimal criticalMax,BigDecimal warningMin,BigDecimal warningMax){
-        // 합격범위는 적어도 한쪽 경계가 있어야 함
-        if(criticalMin == null && criticalMax ==null){throw createRuleError("심각 하한 또는 상한이 필요");}
-        // 심각 하한이 상한보다 큰 경우
-        if(criticalMin != null && criticalMax != null && criticalMin.compareTo(criticalMax) > 0){
-            throw createRuleError("심각 하한은 상한보다 클 수 없습니다");
-        }
-        // 주의 하한이 상한보다 큰 경우
-        if(warningMin != null &&warningMax != null && warningMin.compareTo(criticalMax) > 0){
-            throw createRuleError("주의 하한은 상한보다 클 수 없습니다.");
-        }
-        // 주의 하한은 합격범위 안에 있어야 함
-        if(warningMin != null && isOutOfRange(warningMin, criticalMin, criticalMax)){
-            throw createRuleError("주의 하한은 합격범위 안에 있어야 합니다.");
-        }
+    // 규칙의 상한·하한 설정 검증
+private void validateRuleRange(BigDecimal criticalMin,BigDecimal criticalMax,BigDecimal warningMin,BigDecimal warningMax) {
+    // 합격범위는 적어도 한쪽 경계가 있어야 함
+    if (criticalMin == null && criticalMax == null) {
+        throw createRuleError("심각 하한 또는 상한이 필요합니다.");
     }
+    // 심각 하한이 심각 상한보다 큰 경우
+    if (criticalMin != null && criticalMax != null && criticalMin.compareTo(criticalMax) > 0) {
+        throw createRuleError("심각 하한은 상한보다 클 수 없습니다.");
+    }
+
+    // 주의 하한이 주의 상한보다 큰 경우
+    // 기존 criticalMax 비교를 warningMax로 수정
+    if (warningMin != null && warningMax != null && warningMin.compareTo(warningMax) > 0) {
+        throw createRuleError("주의 하한은 상한보다 클 수 없습니다.");
+    }
+    // 주의 하한은 합격범위 안에 있어야 함
+    if (warningMin != null && isOutOfRange(warningMin,criticalMin,criticalMax)) {
+        throw createRuleError("주의 하한은 합격범위 안에 있어야 합니다.");
+    }
+    // 주의 상한은 합격범위 안에 있어야 함
+    if (warningMax != null && isOutOfRange(warningMax,criticalMin,criticalMax)) {
+        throw createRuleError("주의 상한은 합격범위 안에 있어야 합니다.");
+    }
+}
 
     // 규칙 설정 오류 생성
     private ResponseStatusException createRuleError(String message){

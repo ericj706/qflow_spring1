@@ -64,7 +64,7 @@ public class Anomaly_rule_Service {
         }
         java.math.BigDecimal[] values = {dto.getWarningMin(), dto.getWarningMax(), dto.getCriticalMin(), dto.getCriticalMax()};
         for (java.math.BigDecimal value : values) {
-            if (value != null && (value.stripTrailingZeros().scale() > 4 || value.abs().compareTo(new java.math.BigDecimal("1000000000")) >= 0)) {
+            if (value != null && (value.stripTrailingZeros().scale() > 3 || value.abs().compareTo(new java.math.BigDecimal("1000000000")) >= 0)) {
                 badRequest("기준값은 소수점 3자리까지, 절댓값 10억 미만이어야 합니다.");
             }
         }
