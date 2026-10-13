@@ -116,8 +116,6 @@ public class Bulk_qc_Service {
     return summary;
 }
 
-
-
     // 개별 조회 PK
     public Bulk_qc_Dto findOne(String qc_id){
         Optional<Bulk_qc_Entity> optional = bulk_qc_Repository.findById(qc_id);
@@ -130,7 +128,7 @@ public class Bulk_qc_Service {
     
     // 최종 검사결과 수정
     @Transactional 
-    public  Bulk_qc_Dto updateResult(String qc_id, Bulk_qc_Dto dto){
+    public  Bulk_qc_Dto updateQcResult(String qc_id, Bulk_qc_Dto dto){
         // qc_id로 기존 엔티티 조회
         Bulk_qc_Entity entity = bulk_qc_Repository.findById(qc_id)
                                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 검사기록: "+qc_id));

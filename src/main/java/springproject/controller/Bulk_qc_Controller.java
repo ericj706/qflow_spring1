@@ -56,21 +56,14 @@ public class Bulk_qc_Controller {
     
 
     // 최종 검사결과 및 비고 수정
-    @PutMapping ("/{qc_id}/result")
-    public ResponseEntity<?> updateResult(
-        @PathVariable ("qc_id") String qc_id,
-        @RequestBody Bulk_qc_Dto dto
-    ){
-        try {
-            Bulk_qc_Dto updatedDto = bulk_qc_Service.updateResult(qc_id, dto);
-            return ResponseEntity.ok(updatedDto);
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().body(e.getMessage());
-        } catch (Exception e) {
-            return ResponseEntity.internalServerError().body("수정 중 오류 발생");
-        }
+    @PatchMapping("/{qc_id}/result")
+    public ResponseEntity<?> updateQcResult(
+            @PathVariable(name = "qc_id") String qc_id,
+            @RequestBody Bulk_qc_Dto dto) {
+        bulk_qc_Service.updateQcResult(qc_id, dto);
+        return ResponseEntity.ok("성공적으로 변경되었습니다.");
     }
-
+    
     // 삭제
     @DeleteMapping ("/{qc_id}/result")
     public ResponseEntity<?> deleteResult(@PathVariable ("qc_id") String qc_id) {

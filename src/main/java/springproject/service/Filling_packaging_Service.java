@@ -137,11 +137,19 @@ public class Filling_packaging_Service {
         LocalDateTime startAt = null;
         LocalDateTime endAtExclusive = null;
 
-        if (startDate != null && !startDate.trim().isEmpty()) {
-            startAt = LocalDate.parse(startDate.trim()).atStartOfDay();
-        }
-        if (endDate != null && !endDate.trim().isEmpty()) {
-            endAtExclusive = LocalDate.parse(endDate.trim()).plusDays(1).atStartOfDay();
+        // 💡 [추가] startDate와 endDate가 모두 비어있거나(null or empty) 전달되지 않은 경우 -> 최근 6개월 범위 자동 지정
+        if ((startDate == null || startDate.trim().isEmpty()) && (endDate == null || endDate.trim().isEmpty())) {
+            LocalDate today = LocalDate.now();
+            LocalDate sixMonthsAgo = today.minusMonths(6);
+            startAt = sixMonthsAgo.atStartOfDay();
+            endAtExclusive = today.plusDays(1).atStartOfDay();
+        } else {
+            if (startDate != null && !startDate.trim().isEmpty()) {
+                startAt = LocalDate.parse(startDate.trim()).atStartOfDay();
+            }
+            if (endDate != null && !endDate.trim().isEmpty()) {
+                endAtExclusive = LocalDate.parse(endDate.trim()).plusDays(1).atStartOfDay();
+            }
         }
 
         if ("15min".equalsIgnoreCase(groupBy) || "15분별".equalsIgnoreCase(groupBy)) {
@@ -159,7 +167,7 @@ public class Filling_packaging_Service {
             return filling_packaging_Repository.findDailySummary(startAt, endAtExclusive);
         }
     }
-
+    
     // 4. 대시보드 카운트 통합 조회
     public Dashboard_Stats_Dto getDashboardStats(String batchId) {
         if (batchId == null || batchId.trim().isEmpty()) {
