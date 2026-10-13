@@ -81,5 +81,12 @@ public class Bulk_qc_Controller {
             return ResponseEntity.badRequest().body("초기화 처리 중 오류 발생 :" +e.getMessage());
         }
     }
+
+    // 승인 팝업에서 사용할 공정 실행별 검사 결과 조회
+    @GetMapping("/executions/{executionId}")
+    public List<Bulk_qc_Dto> findByExecutionId(@PathVariable(name = "executionId") Long executionId){
+        return bulk_qc_Service.findByExecutionId(executionId);
+    }
+    
     
 }

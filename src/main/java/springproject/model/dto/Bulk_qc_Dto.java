@@ -19,11 +19,8 @@ public class Bulk_qc_Dto {
     private LocalDateTime sample_time;
     private Integer userId;
     private BigDecimal ph_measured;
-    private String ph_criteria;
     private BigDecimal viscosity_measured;
-    private String viscosity_criteria;
     private BigDecimal specific_gravity;
-    private String sg_criteria;
     private String appearance_code;
     private String microbubble_code;
     private String microbial_cfu;
@@ -49,11 +46,8 @@ public class Bulk_qc_Dto {
                 .usersEntity(usersEntity)
                 .process_execution_Entity(processExecutionEntity)
                 .ph_measured(this.ph_measured)
-                .ph_criteria(this.ph_criteria)
                 .viscosity_measured(this.viscosity_measured)
-                .viscosity_criteria(this.viscosity_criteria)
-                .specific_gravity(this.specific_gravity)
-                .sg_criteria(this.sg_criteria)
+                .specific_gravity(this.specific_gravity)                
                 .appearance_code(this.appearance_code)
                 .microbubble_code(this.microbubble_code)
                 .microbial_cfu(this.microbial_cfu)
@@ -75,11 +69,8 @@ public class Bulk_qc_Dto {
                         entity.getUsersEntity() == null
                                 ? null : entity.getUsersEntity().getUserId())
                 .ph_measured(entity.getPh_measured())
-                .ph_criteria(entity.getPh_criteria())
                 .viscosity_measured(entity.getViscosity_measured())
-                .viscosity_criteria(entity.getViscosity_criteria())
                 .specific_gravity(entity.getSpecific_gravity())
-                .sg_criteria(entity.getSg_criteria())
                 .appearance_code(entity.getAppearance_code())
                 .microbubble_code(entity.getMicrobubble_code())
                 .microbial_cfu(entity.getMicrobial_cfu())

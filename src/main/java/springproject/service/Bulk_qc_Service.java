@@ -154,4 +154,13 @@ public class Bulk_qc_Service {
         return Bulk_qc_Dto.from(entity);    
     }
 
+    // 해당 공정 실행에 연결된 검사 결과 목록
+    @Transactional (readOnly = true)
+    public List<Bulk_qc_Dto> findByExecutionId(Long executionId){
+        if(executionId == null ||  executionId <= 0){
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"올바른 공정 실행번호를 입력해");
+        }
+        return bulk_qc_Repository.findByExecutionId(executionId).stream().map(Bulk_qc_Dto::from).toList();
+    }
+
 }
