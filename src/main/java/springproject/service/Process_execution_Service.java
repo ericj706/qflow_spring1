@@ -197,7 +197,7 @@ public class Process_execution_Service {
         String nextProcessCode = getNextProcessCode(entity.getProcess_code());
 
         // 9. 알람 처리 여부와 벌크 검사 승인 결과 확인
-        boolean alarmsHandled = checkAlarmStatus(executionId);
+        boolean alarmsHandled = checkAlarmStatus(entity);
         String qcBlockReason = checkBulkQcStatus(entity);
         // 다음 공정이 있고, 알람과 검사 조건을 모두 충족하면 자동 시작
         boolean startNext = nextProcessCode != null && alarmsHandled && qcBlockReason == null;
@@ -232,7 +232,10 @@ public class Process_execution_Service {
         String nextProcessStatus; String message;
         if (!alarmsHandled) {
             nextProcessStatus = "알람 처리 대기";
-            message = "주의 알람 확인 또는 심각 알람 조치를 완료해 주세요.";
+            boolean earlyProcess = "원료 칭량".equals(entity.getProcess_code()) || "가열/혼합".equals(entity.getProcess_code()) || "냉각".equals(entity.getProcess_code());
+            if (earlyProcess) {
+                message = "심각 알람의 확인과 조치를 완료해 주세요. " + "알람의 심각도 정보도 확인해 주세요.";
+            } else { message = "주의 알람은 확인하고, 심각 알람은 확인과 조치를 완료해 주세요. " + "알람의 심각도 정보도 확인해 주세요.";}
         } else if (qcBlockReason != null) {
             nextProcessStatus = "검사 확인 대기";
             message = qcBlockReason;
@@ -270,33 +273,57 @@ public class Process_execution_Service {
     }
 
     private final Anomaly_event_Repository anomaly_event_Repository;
-    // 현재 공정의 알람 확인 / 조치가 모두 끝났는지 검사 (내부에서만 확인하는 보조용 메소드)
-    private boolean checkAlarmStatus(Long executionId){
-        List<Anomaly_event_Entity> alarms = anomaly_event_Repository.findByExecutionId(executionId);
-        for(Anomaly_event_Entity alarm : alarms){
+    // 현재 공정의 다음 단계 진행을 막는 알람이 있는지 확인
+    private boolean checkAlarmStatus(Process_execution_Entity execution) {
+        if (execution == null || execution.getExecution_id() == null) {return false;}
+        String processCode = execution.getProcess_code();
+        if (processCode == null) {return false;}
+
+        // 1~3공정은 주의 알람이 미확인이어도 진행 허용
+        // 벌크 검사와 최종 포장 검사는 기존 주의 확인 조건 유지
+        boolean allowUnconfirmedWarning;
+        switch (processCode) {
+            case "원료 칭량":
+            case "가열/혼합":
+            case "냉각":
+                allowUnconfirmedWarning = true;
+                break;
+            case "벌크 검사":
+            case "최종 포장 검사":
+                allowUnconfirmedWarning = false;
+                break;
+            default:
+                // 알 수 없는 공정이면 진행 보류
+                return false;
+        }
+
+        List<Anomaly_event_Entity> alarms = anomaly_event_Repository.findByExecutionId(execution.getExecution_id());
+        for (Anomaly_event_Entity alarm : alarms) {
             String severity = alarm.getSeverity();
             String actionStatus = alarm.getActionStatus();
-            
-            // 정상은 별도 처리없이 통과
-            if("정상".equals(severity)){continue;}
-            // 주의는 확인 또는 조치 완료가 필요
+            // 정상은 진행 허용
+            if ("정상".equals(severity)) {continue;}
+            // 주의 알람
             if ("주의".equals(severity)) {
+                // 1~3공정: 알람 상태는 변경하지 않고 진행 허용
+                if (allowUnconfirmedWarning) {continue;}
+                // 4~5공정: 확인 또는 조치 완료 필요
                 boolean handled = "확인됨".equals(actionStatus) || "조치완료".equals(actionStatus);
                 if (!handled) {return false;}
-                // 처리된 주의 알람이면 다음 알람 검사
                 continue;
             }
-            // 심각은 조치 완료 상태와 조치 내용이 모두 필요
-            if("심각".equals(severity)){
+
+            // 모든 공정의 심각 알람은 조치 완료 필요
+            // 확인 → 조치 완료 순서는 알람 서비스에서 검증
+            if ("심각".equals(severity)) {
                 String actionNote = alarm.getActionNote();
                 boolean handled = "조치완료".equals(actionStatus) && actionNote != null && !actionNote.isBlank();
-                if(!handled){return  false;}
+                if (!handled) {return false;}
                 continue;
             }
-            // 심각도가 없거나 알 수 없는 값이면 진행 보류
+           // 심각도가 없거나 알 수 없는 값이면 진행 보류
             return false;
         }
-        // 알람이 없거나 모든 알람의 처리 조건을 충족
         return true;
     }
 
@@ -340,19 +367,28 @@ public class Process_execution_Service {
         }
         // 7. 다음 공정명 및 알람 처리 여부 확인
         String nextProcessCode = getNextProcessCode(entity.getProcess_code());
-        boolean alarmsHandled = checkAlarmStatus(executionId);
+        boolean alarmsHandled = checkAlarmStatus(entity);
         String qcBlockReason = checkBulkQcStatus(entity);
         Process_execution_Dto nextExecution = null;
+        
         String nextProcessStatus;
         String message;
         if (!alarmsHandled) {
             nextProcessStatus = "알람 처리 대기";
-            message = "남아 있는 주의 알람 확인 또는 심각 알람 조치를 완료해 주세요.";
+            boolean earlyProcess =
+                    "원료 칭량".equals(entity.getProcess_code())
+                    || "가열/혼합".equals(entity.getProcess_code())
+                    || "냉각".equals(entity.getProcess_code());
+            if (earlyProcess) {
+                message = "심각 알람의 확인과 조치를 완료해 주세요. "+ "알람의 심각도 정보도 확인해 주세요.";
+            } else {
+                message = "주의 알람은 확인하고, 심각 알람은 확인과 조치를 완료해 주세요. "+ "알람의 심각도 정보도 확인해 주세요.";
+            }
         } else if (qcBlockReason != null) {
             nextProcessStatus = "검사 확인 대기";
             message = qcBlockReason;
         } else if (nextProcessCode == null) {
-            // 이미 LOT가 완료됐다면 기존 완료 상태 유지
+            // 마지막 공정: 이미 완료된 LOT라면 기존 완료 상태 유지
             if (!"완료".equals(batch.getStatus())) {
                 ExecutionPackagingSummary packagingSummary = checkPackagingResult(executionId);
                 completeBatch(batch, entity, packagingSummary);
@@ -360,17 +396,13 @@ public class Process_execution_Service {
             nextProcessStatus = "LOT 완료";
             message = "최종 포장 검사와 LOT 생산이 완료되었습니다.";
         } else {
-            // 8. 별도 경로로 시작된 같은 공정이 있는지 확인
-            long nextCount = pr.countByBatchAndProcessAndStatus(
-                    batchId,
-                    nextProcessCode,
-                    "진행중"
-            );
+            // 같은 LOT의 다음 공정이 이미 진행 중인지 확인
+            long nextCount = pr.countByBatchAndProcessAndStatus(batchId,nextProcessCode,"진행중");
             if (nextCount > 0) {
-                throw new ResponseStatusException(
-                        HttpStatus.CONFLICT,"같은 LOT의 다음 공정이 이미 진행 중입니다. 실행 이력을 확인해 주세요.");
+                throw new ResponseStatusException(HttpStatus.CONFLICT,"같은 LOT의 다음 공정이 이미 진행 중입니다. 실행 이력을 확인해 주세요.");
             }
-            // 9. 다음 공정 생성
+
+            // 다음 공정 생성
             Process_execution_Entity nextEntity =
                     Process_execution_Entity.builder()
                             .batchesEntity(batch)
@@ -385,6 +417,7 @@ public class Process_execution_Service {
             nextProcessStatus = "다음 공정 시작";
             message = nextProcessCode + " 공정이 시작되었습니다.";
         }
+        
         // 10. 진행 재검사 결과 반환
         return Process_execution_Finish_Dto.builder()
                 .finishedExecution(Process_execution_Dto.from(entity))

@@ -2,6 +2,7 @@ package springproject.controller;
 
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.service.annotation.PutExchange;
 
 import lombok.Data;
@@ -60,19 +61,31 @@ public class Bulk_qc_Controller {
     public ResponseEntity<?> updateQcResult(
             @PathVariable(name = "qc_id") String qc_id,
             @RequestBody Bulk_qc_Dto dto) {
-        bulk_qc_Service.updateQcResult(qc_id, dto);
-        return ResponseEntity.ok("성공적으로 변경되었습니다.");
-    }
-    
-    // 삭제
-    @DeleteMapping ("/{qc_id}/result")
-    public ResponseEntity<?> deleteResult(@PathVariable ("qc_id") String qc_id) {
         try {
-            Bulk_qc_Dto updatedDto = bulk_qc_Service.deleteResult(qc_id);
-            return ResponseEntity.ok(updatedDto);
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().body("초기화 처리 중 오류 발생 :" +e.getMessage());
+            Bulk_qc_Dto result = bulk_qc_Service.updateQcResult(qc_id, dto);
+            return ResponseEntity.ok(result);
+        } catch (ResponseStatusException e) {
+            return ResponseEntity.status(e.getStatusCode()).body(e.getReason());
         }
     }
+
+    // 검사결과와 비고 초기화 — 검사 행 자체는 삭제하지 않음
+    @DeleteMapping("/{qc_id}/result")
+    public ResponseEntity<?> deleteResult(
+            @PathVariable(name = "qc_id") String qc_id) {
+        try {
+            Bulk_qc_Dto result = bulk_qc_Service.deleteResult(qc_id);
+            return ResponseEntity.ok(result);
+        } catch (ResponseStatusException e) {
+            return ResponseEntity.status(e.getStatusCode()).body(e.getReason());
+        }
+    }
+
+    // 승인 팝업에서 사용할 공정 실행별 검사 결과 조회
+    @GetMapping("/executions/{executionId}")
+    public List<Bulk_qc_Dto> findByExecutionId(@PathVariable(name = "executionId") Long executionId){
+        return bulk_qc_Service.findByExecutionId(executionId);
+    }
+    
     
 }

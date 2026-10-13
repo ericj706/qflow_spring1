@@ -13,6 +13,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -20,8 +21,11 @@ import lombok.RequiredArgsConstructor;
 import springproject.model.dto.Bulk_qc_Dto;
 import springproject.model.dto.page.Page_response;
 import springproject.model.dto.search.Bulk_qc_SearchDto;
+import springproject.model.entity.Batches_Entity;
 import springproject.model.entity.Bulk_qc_Entity;
+import springproject.model.repository.Batches_Repository;
 import springproject.model.repository.Bulk_qc_Repository;
+import springproject.model.repository.Process_execution_Repository;
 
 @Service 
 @RequiredArgsConstructor 
@@ -126,30 +130,82 @@ public class Bulk_qc_Service {
         return null;
     }   
     
-    // 최종 검사결과 수정
-    @Transactional 
-    public  Bulk_qc_Dto updateQcResult(String qc_id, Bulk_qc_Dto dto){
-        // qc_id로 기존 엔티티 조회
-        Bulk_qc_Entity entity = bulk_qc_Repository.findById(qc_id)
-                                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 검사기록: "+qc_id));
-        // 종합검사결과 수정
-        if(dto.getOverall_qc_result() != null && !dto.getOverall_qc_result().trim().isEmpty()){
-            entity.setOverall_qc_result(dto.getOverall_qc_result());
+    // 최종 검사결과 및 비고 수정
+    @Transactional(isolation = Isolation.READ_COMMITTED)
+    public Bulk_qc_Dto updateQcResult(String qc_id, Bulk_qc_Dto dto) {
+        if (dto == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"수정할 내용을 입력해 주세요.");
         }
-        // 비고/사유 수정 및 저장
-        if (dto.getQc_notes_code() != null) {
-            entity.setQc_notes_code(dto.getQc_notes_code());
+        // LOT 잠금 및 승인 여부 확인 후 변경 가능한 검사 반환
+        Bulk_qc_Entity entity = findEditableQc(qc_id);
+        String result = dto.getOverall_qc_result();
+        if (result != null && !result.isBlank()) {
+            result = result.trim();
+            if (!"합격".equals(result) && !"불합격".equals(result)) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"검사 결과는 합격 또는 불합격으로 입력해 주세요.");
+            }
+            entity.setOverall_qc_result(result);
         }
+        if (dto.getQc_notes_code() != null) {entity.setQc_notes_code(dto.getQc_notes_code());}
+        // 트랜잭션 종료 시 변경 내용 저장
         return Bulk_qc_Dto.from(entity);
     }
 
-    @Transactional 
-    public Bulk_qc_Dto deleteResult(String qc_id){
-        Bulk_qc_Entity entity = bulk_qc_Repository.findById(qc_id)
-            .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 검사기록: "+qc_id));
+    // 검사결과와 비고 초기화 — 검사 행 자체는 삭제하지 않음
+    @Transactional(isolation = Isolation.READ_COMMITTED)
+    public Bulk_qc_Dto deleteResult(String qc_id) {
+        Bulk_qc_Entity entity = findEditableQc(qc_id);
         entity.setOverall_qc_result(null);
         entity.setQc_notes_code(null);
-        return Bulk_qc_Dto.from(entity);    
+        return Bulk_qc_Dto.from(entity);
+    }
+
+    // 해당 공정 실행에 연결된 검사 결과 목록
+    @Transactional (readOnly = true)
+    public List<Bulk_qc_Dto> findByExecutionId(Long executionId){
+        if(executionId == null ||  executionId <= 0){
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"올바른 공정 실행번호를 입력해");
+        }
+        return bulk_qc_Repository.findByExecutionId(executionId).stream().map(Bulk_qc_Dto::from).toList();
+    }
+
+    private final Batches_Repository batches_Repository;
+    private final Process_execution_Repository process_execution_Repository;
+
+    // 변경할 검사 조회 및 최종 승인 여부 확인
+    // 반드시 트랜잭션이 있는 메소드에서 호출
+    private Bulk_qc_Entity findEditableQc(String qcId) {
+        if (qcId == null || qcId.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"검사번호를 입력해 주세요.");
+        }
+        // 엔티티를 읽기 전에 LOT 번호부터 조회
+        String batchId = bulk_qc_Repository.findBatchIdByQcId(qcId).orElse(null);
+        if (batchId == null) {
+            if (!bulk_qc_Repository.existsById(qcId)) {
+                throw new ResponseStatusException(HttpStatus.NOT_FOUND,"해당 검사 기록이 없습니다.");}
+            throw new ResponseStatusException(HttpStatus.CONFLICT,"검사 기록에 연결된 LOT를 확인해 주세요.");
+        }
+        // 최종 승인 처리와 동일한 LOT 잠금 사용
+        Batches_Entity batch = batches_Repository.findByIdForUpdate(batchId).orElse(null);
+        if (batch == null) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND,"해당 LOT가 없습니다.");
+        }
+        // 잠금을 얻은 뒤 검사 기록 조회
+        Bulk_qc_Entity entity = bulk_qc_Repository.findById(qcId).orElse(null);
+        if (entity == null) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND,"해당 검사 기록이 없습니다.");
+        }
+
+        if (entity.getBatchesEntity() == null || !batchId.equals(entity.getBatchesEntity().getBatchId())) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,"검사의 LOT 연결이 변경되었습니다. 다시 조회해 주세요.");
+        }
+
+        // 승인 대상으로 지정된 기록은 수정·초기화 금지
+        long approvedCount = process_execution_Repository.countByFinalQcId(qcId);
+        if (approvedCount > 0) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,"최종 승인된 검사 결과는 수정하거나 초기화할 수 없습니다.");
+        }
+        return entity;
     }
 
 }

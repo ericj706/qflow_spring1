@@ -44,25 +44,13 @@ public class Bulk_qc_Entity extends BaseTime{
     @Column(name = "ph_measured", precision = 6, scale = 3)
     private BigDecimal ph_measured;
 
-    // pH 합격범위
-    @Column(name = "ph_criteria", length = 30)
-    private String ph_criteria;
-
     // 측정 점도
     @Column(name = "viscosity_measured", precision = 12, scale = 3)
     private BigDecimal viscosity_measured;
 
-    // 점도 합격범위
-    @Column(name = "viscosity_criteria", length = 30)
-    private String viscosity_criteria;
-
     // 측정 비중
     @Column(name = "specific_gravity", precision = 8, scale = 4)
     private BigDecimal specific_gravity;
-
-    // 비중 합격범위
-    @Column(name = "sg_criteria", length = 30)
-    private String sg_criteria;
 
     // 외관검사
     @Column(name = "appearance_code", length = 50)
