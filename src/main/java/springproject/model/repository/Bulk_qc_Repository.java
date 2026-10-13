@@ -2,6 +2,7 @@ package springproject.model.repository;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 import org.springframework.data.domain.Page;  // 조회 결과 목록과 전체 건수·전체 페이지 수를 담는 타입
 import org.springframework.data.domain.Pageable;
@@ -50,5 +51,13 @@ public interface Bulk_qc_Repository extends JpaRepository<Bulk_qc_Entity, String
     // 합격/불합격 건수 조회
     @Query("SELECT b.overall_qc_result, COUNT(b) FROM Bulk_qc_Entity b GROUP BY b.overall_qc_result")
     List<Object[]> countByOverallQcResultGroup();
+
+    // 수정·초기화 전에 잠글 LOT 번호 조회
+        @Query("""
+                SELECT q.batchesEntity.batchId
+                FROM Bulk_qc_Entity q
+                WHERE q.qc_id = :qcId
+                """)
+        Optional<String> findBatchIdByQcId(@Param("qcId") String qcId);
     
 }

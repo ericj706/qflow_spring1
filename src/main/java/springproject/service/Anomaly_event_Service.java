@@ -199,9 +199,10 @@ public class Anomaly_event_Service {
         // 9. 잠금 전에 조회한 공정 실행과 같은지 확인
         if (alarm.getProcess_execution_Entity() == null || !executionId.equals(alarm.getProcess_execution_Entity().getExecution_id())) {
             throw new ResponseStatusException(HttpStatus.CONFLICT,"알람의 공정 연결이 변경되었습니다. 다시 조회해 주세요.");}
-        // 10. 주의 알람만 확인 처리
-        if (!"주의".equals(alarm.getSeverity())) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT,"주의 알람만 확인 처리할 수 있습니다. 심각 알람은 조치가 필요합니다.");
+        // 10. 주의·심각 알람 확인 처리
+        String severity = alarm.getSeverity();
+        if (!"주의".equals(severity) && !"심각".equals(severity)) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,"주의 또는 심각 알람만 확인 처리할 수 있습니다.");
         }
         // 11. 이미 처리했다면 기존 결과 반환
         // 최초 확인자와 처리시간을 덮어쓰지 않음
@@ -300,13 +301,10 @@ public class Anomaly_event_Service {
                     HttpStatus.CONFLICT,"이미 조치 완료된 알람입니다. 기존 조치내역을 확인해 주세요.");
         }
 
-        // 13. 처리 가능한 상태인지 확인
+        // 13. 확인을 먼저 완료한 심각 알림만 조치 완료 가능
         String actionStatus = alarm.getActionStatus();
-        if (!"미확인".equals(actionStatus)
-                && !"확인됨".equals(actionStatus)
-                && !"조치중".equals(actionStatus)) {
-            throw new ResponseStatusException(
-                HttpStatus.CONFLICT,"알람의 조치 상태를 확인해 주세요.");
+        if(!"확인됨".equals(actionStatus)){
+            throw new ResponseStatusException(HttpStatus.CONFLICT,"심각 알람을 먼저 확인한 뒤 조치 완료해 주세요.");
         }
 
         // 14. 조치 결과 저장

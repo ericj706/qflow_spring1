@@ -91,4 +91,13 @@ public interface Process_execution_Repository extends JpaRepository<Process_exec
           WHERE p.batchesEntity.batchId = :batchId
           """)
      boolean existsByBatchesEntity_BatchId(@Param("batchId") String batchId);
+
+          // 최종 승인 대상으로 지정된 검사인지 확인
+     @Query("""
+          SELECT COUNT(p)
+          FROM Process_execution_Entity p
+          WHERE p.finalBulkQc.qc_id = :qcId
+          """)
+     long countByFinalQcId(@Param("qcId") String qcId);
+
 }
