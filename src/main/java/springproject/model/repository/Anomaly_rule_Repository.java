@@ -15,5 +15,5 @@ public interface Anomaly_rule_Repository extends JpaRepository<Anomaly_rule_Enti
     // 현재 사용중인 이상감지규칙만 조회
     List<Anomaly_rule_Entity> findByIsActiveTrueOrderByRuleIdAsc();
     // 동일공정,동일센서항목인것 조회, 상태값 변경
-    Optional<Anomaly_rule_Entity> findByProcessCodeAndSensorNameAndIsActiveTrue(String processCode, String sensorName);
+    List<Anomaly_rule_Entity> findByProcessCodeAndSensorNameAndConditionTypeAndIsActiveTrue(String processCode, String sensorName, String conditionType);
 }

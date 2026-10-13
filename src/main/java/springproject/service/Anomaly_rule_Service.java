@@ -47,43 +47,81 @@ public class Anomaly_rule_Service {
         }
         return dtos;
     }
-
-    // 4) 신규 이상규칙 저장(수정)
-    @Transactional 
-    public Anomaly_rule_Dto saveNewRule(Anomaly_rule_Dto dto){
-        // 동일공정,동일검사항목 -> 현재 사용중인 규칙 조회
-        Optional<Anomaly_rule_Entity> opt = anomaly_rule_Repository
-            .findByProcessCodeAndSensorNameAndIsActiveTrue(dto.getProcessCode(), dto.getSensorName());
-        // 이전 규칙이 존재하면 isActive->false
-        opt.ifPresent(oldRule -> {
-            oldRule.setIsActive(false);
-        });
-        // 새로 개정된 규칙 isActive->true
-        Anomaly_rule_Entity newEntity = dto.toEntity();
-        newEntity.setIsActive(true);
-
-        Anomaly_rule_Entity saved = anomaly_rule_Repository.save(newEntity);
-        return Anomaly_rule_Dto.from(saved);
+    // 규칙 존재 검증
+    private Anomaly_rule_Entity requireRule(Integer id) {
+        return anomaly_rule_Repository.findById(id).orElseThrow(() ->
+            new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.NOT_FOUND, "존재하지 않는 규칙"));
     }
-
-    // 5) 사용여부 수정 (토글스위치)
-    @Transactional 
-    public Anomaly_rule_Dto activeChange(Integer ruleId){
-        Anomaly_rule_Entity entity = anomaly_rule_Repository.findById(ruleId)
-            .orElseThrow( ()-> new IllegalArgumentException("존재하지 않는 규칙:"+ruleId));
-        boolean currentStatus = Boolean.TRUE.equals(entity.getIsActive()); 
-        if (currentStatus) {    // is_active = true인것 누르면 
-            throw new RuntimeException("작업자의 동의 필요");
+    // 이상감지규칙 입력값 검증
+    private void validate(Anomaly_rule_Dto dto) {
+        if (dto.getProcessCode() == null || dto.getProcessCode().isBlank() || dto.getProcessCode().length() > 30
+            || dto.getSensorName() == null || dto.getSensorName().isBlank() || dto.getSensorName().length() > 50
+            || dto.getAnomalyType() == null || dto.getAnomalyType().isBlank() || dto.getAnomalyType().length() > 50
+            || dto.getConditionType() == null || dto.getConditionType().isBlank() || dto.getConditionType().length() > 20
+            || dto.getDurationSeconds() == null || dto.getDurationSeconds() < 0 || dto.getIsActive() == null
+            || (dto.getStatusValue() != null && dto.getStatusValue().length() > 50)) {
+            badRequest("필수 항목과 지속시간을 확인해 주세요.");
         }
-        Optional<Anomaly_rule_Entity> currentActive = anomaly_rule_Repository
-            .findByProcessCodeAndSensorNameAndIsActiveTrue(entity.getProcessCode(), entity.getSensorName());
-        currentActive.ifPresent(oldRule -> {
-            oldRule.setIsActive(false); // is_active = false확인
-            anomaly_rule_Repository.save(oldRule);
-        });
-        entity.setIsActive(true); // 비활성화 상태-> 활성화로 전환
-        Anomaly_rule_Entity updated = anomaly_rule_Repository.save(entity);
-        return Anomaly_rule_Dto.from(updated);
+        java.math.BigDecimal[] values = {dto.getWarningMin(), dto.getWarningMax(), dto.getCriticalMin(), dto.getCriticalMax()};
+        for (java.math.BigDecimal value : values) {
+            if (value != null && (value.stripTrailingZeros().scale() > 4 || value.abs().compareTo(new java.math.BigDecimal("1000000000")) >= 0)) {
+                badRequest("기준값은 소수점 3자리까지, 절댓값 10억 미만이어야 합니다.");
+            }
+        }
+        if ((dto.getWarningMin() != null && dto.getWarningMax() != null && dto.getWarningMin().compareTo(dto.getWarningMax()) > 0)
+            || (dto.getCriticalMin() != null && dto.getCriticalMax() != null && dto.getCriticalMin().compareTo(dto.getCriticalMax()) > 0)
+            || (dto.getCriticalMin() != null && dto.getWarningMin() != null && dto.getCriticalMin().compareTo(dto.getWarningMin()) > 0)
+            || (dto.getWarningMax() != null && dto.getCriticalMax() != null && dto.getWarningMax().compareTo(dto.getCriticalMax()) > 0)) {
+            badRequest("최소값은 최대값 이하여야 하며 주의 범위는 심각 기준 범위 안에 있어야 합니다.");
+        }
     }
-    
+    // 검증 실패 응답(예외처리에 반복사용)
+    private void badRequest(String message) {
+        throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.BAD_REQUEST, message);
+    }
+    // 중복 활성화된 규칙 검증
+    private void deactivateConflicts(Anomaly_rule_Entity entity) {
+        anomaly_rule_Repository.findByProcessCodeAndSensorNameAndConditionTypeAndIsActiveTrue(
+            entity.getProcessCode(), entity.getSensorName(), entity.getConditionType())
+            .stream().filter(old -> !old.getRuleId().equals(entity.getRuleId()))
+            .forEach(old -> old.setIsActive(false));
+    }
+    // 신규 이상규칙 저장
+    @Transactional
+    public Anomaly_rule_Dto saveNewRule(Anomaly_rule_Dto dto) {
+        validate(dto);
+        Anomaly_rule_Entity entity = dto.toEntity();
+        if (Boolean.TRUE.equals(entity.getIsActive())) { deactivateConflicts(entity); }
+        return Anomaly_rule_Dto.from(anomaly_rule_Repository.save(entity));
+    }
+
+    // 기존 ID, 생성시간, 이상 발생 기록과의 연결 유지
+    @Transactional
+    public Anomaly_rule_Dto update(Integer ruleId, Anomaly_rule_Dto dto) {
+        validate(dto);
+        Anomaly_rule_Entity entity = requireRule(ruleId);
+        entity.setProcessCode(dto.getProcessCode());
+        entity.setSensorName(dto.getSensorName());
+        entity.setAnomalyType(dto.getAnomalyType());
+        entity.setConditionType(dto.getConditionType());
+        entity.setWarningMin(dto.getWarningMin());
+        entity.setWarningMax(dto.getWarningMax());
+        entity.setCriticalMin(dto.getCriticalMin());
+        entity.setCriticalMax(dto.getCriticalMax());
+        entity.setStatusValue(dto.getStatusValue());
+        entity.setDurationSeconds(dto.getDurationSeconds());
+        entity.setCheckItems(dto.getCheckItems());
+        entity.setResponseDescription(dto.getResponseDescription());
+        entity.setIsActive(dto.getIsActive());
+        if (Boolean.TRUE.equals(entity.getIsActive())) { deactivateConflicts(entity); }
+        return Anomaly_rule_Dto.from(anomaly_rule_Repository.save(entity));
+    }
+    // 사용여부 전환
+    @Transactional
+    public Anomaly_rule_Dto activeChange(Integer ruleId) {
+        Anomaly_rule_Entity entity = requireRule(ruleId);
+        entity.setIsActive(!Boolean.TRUE.equals(entity.getIsActive()));
+        if (Boolean.TRUE.equals(entity.getIsActive())) { deactivateConflicts(entity); }
+        return Anomaly_rule_Dto.from(anomaly_rule_Repository.save(entity));
+    }
 }
