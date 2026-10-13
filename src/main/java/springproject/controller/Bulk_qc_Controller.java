@@ -56,6 +56,7 @@ public class Bulk_qc_Controller {
     }
     
 
+<<<<<<< HEAD
     // 검사결과 및 비고 수정
     @PutMapping("/{qc_id}/result")
     public ResponseEntity<?> updateResult(
@@ -73,6 +74,20 @@ public class Bulk_qc_Controller {
     @DeleteMapping("/{qc_id}/result")
     public ResponseEntity<?> deleteResult(
             @PathVariable(name = "qc_id") String qc_id) {
+=======
+    // 최종 검사결과 및 비고 수정
+    @PatchMapping("/{qc_id}/result")
+    public ResponseEntity<?> updateQcResult(
+            @PathVariable(name = "qc_id") String qc_id,
+            @RequestBody Bulk_qc_Dto dto) {
+        bulk_qc_Service.updateQcResult(qc_id, dto);
+        return ResponseEntity.ok("성공적으로 변경되었습니다.");
+    }
+    
+    // 삭제
+    @DeleteMapping ("/{qc_id}/result")
+    public ResponseEntity<?> deleteResult(@PathVariable ("qc_id") String qc_id) {
+>>>>>>> 9dcbc31301dbb2115acb1869fc0c04340b9c2f02
         try {
             Bulk_qc_Dto result = bulk_qc_Service.deleteResult(qc_id);
             return ResponseEntity.ok(result);

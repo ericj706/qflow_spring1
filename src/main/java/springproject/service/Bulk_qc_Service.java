@@ -120,8 +120,6 @@ public class Bulk_qc_Service {
     return summary;
 }
 
-
-
     // 개별 조회 PK
     public Bulk_qc_Dto findOne(String qc_id){
         Optional<Bulk_qc_Entity> optional = bulk_qc_Repository.findById(qc_id);
@@ -134,11 +132,11 @@ public class Bulk_qc_Service {
     
     // 최종 검사결과 및 비고 수정
     @Transactional(isolation = Isolation.READ_COMMITTED)
-    public Bulk_qc_Dto updateResult(String qc_id, Bulk_qc_Dto dto) {
+    public Bulk_qc_Dto updateQcResult(String qc_id, Bulk_qc_Dto dto) {
         if (dto == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"수정할 내용을 입력해 주세요.");
         }
-
+        // LOT 잠금 및 승인 여부 확인 후 변경 가능한 검사 반환
         Bulk_qc_Entity entity = findEditableQc(qc_id);
         String result = dto.getOverall_qc_result();
         if (result != null && !result.isBlank()) {

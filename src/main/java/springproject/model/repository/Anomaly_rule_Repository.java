@@ -18,4 +18,5 @@ public interface Anomaly_rule_Repository extends JpaRepository<Anomaly_rule_Enti
     Optional<Anomaly_rule_Entity> findByProcessCodeAndSensorNameAndIsActiveTrue(String processCode, String sensorName, String conditionType);
     // 특정 공정에서 사용하는 활성 규칙 목록
     List<Anomaly_rule_Entity> findByProcessCodeAndIsActiveTrueOrderByRuleIdAsc(String processCode);
+    List<Anomaly_rule_Entity> findByProcessCodeAndSensorNameAndConditionTypeAndIsActiveTrue(String processCode, String sensorName, String conditionType);
 }
