@@ -67,5 +67,4 @@ public class Sensor_telemetry_Entity {
     @ManyToOne
     @JoinColumn(name = "user_id", referencedColumnName = "user_id")
     private Users_Entity usersEntity;
-
 }
