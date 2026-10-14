@@ -67,7 +67,4 @@ public class Sensor_telemetry_Entity {
     @ManyToOne
     @JoinColumn(name = "user_id", referencedColumnName = "user_id")
     private Users_Entity usersEntity;
-
-    @Column(name = "tank_temp_c", precision = 8, scale = 3)
-    private BigDecimal tank_temp_c;
 }

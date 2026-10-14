@@ -27,7 +27,7 @@ public class Sensor_telemetry_Dto {
     private BigDecimal cooling_valve_pct;
     private String record_source;
     private Integer userId;
-    private BigDecimal tank_temp_c;
+    
 
     // DTO → Entity
     public Sensor_telemetry_Entity toEntity(
@@ -48,7 +48,6 @@ public class Sensor_telemetry_Dto {
                 .cooling_valve_pct(this.cooling_valve_pct)
                 .record_source(this.record_source)
                 .usersEntity(usersEntity)
-                .tank_temp_c(this.tank_temp_c)
                 .build();
     }
     
@@ -71,7 +70,6 @@ public class Sensor_telemetry_Dto {
                 .cooling_valve_pct(entity.getCooling_valve_pct())
                 .record_source(entity.getRecord_source())
                 .userId(entity.getUsersEntity() == null? null : entity.getUsersEntity().getUserId())
-                .tank_temp_c(entity.getTank_temp_c())
                 .build();
     }
 }
