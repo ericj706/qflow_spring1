@@ -208,9 +208,7 @@ public class Material_dispensing_Service {
         return material_dispensing_Repository.findById(dispenseId)
                 .map(Material_dispensing_Dto::from)
                 .orElseThrow(
-                        () -> new IllegalArgumentException(
-                                "존재하지 않는 ID"
-                        )
+                        () -> new ResponseStatusException(HttpStatus.NOT_FOUND, "존재하지 않는 ID")
                 );
     }
 

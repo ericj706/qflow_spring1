@@ -1,5 +1,12 @@
 package springproject.service;
 
+import java.math.BigDecimal;
+import springproject.model.entity.Process_execution_Entity;
+import springproject.model.entity.Users_Entity;
+import springproject.model.repository.Users_Repository;
+import springproject.model.repository.Batches_Repository;
+import springproject.model.repository.Process_execution_Repository;
+
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -22,6 +29,10 @@ import springproject.model.repository.Sensor_telemetry_Repository;
 @RequiredArgsConstructor 
 @Transactional (readOnly = true)
 public class Sensor_telemetry_Service {
+    private final Batches_Repository batches;
+    private final Process_execution_Repository executions;
+    private final Users_Repository users;
+
     private final Sensor_telemetry_Repository sr;
 
     // 전체조회 + 조건검색 + 페이징
@@ -93,5 +104,96 @@ public class Sensor_telemetry_Service {
             return null;
         }
         return Sensor_telemetry_Dto.from(entity);
+    }
+
+    // 실제 진행 중인 공정에 센서 측정값을 연결해 저장한다.
+    @Transactional
+    public Sensor_telemetry_Dto save(Sensor_telemetry_Dto dto) {
+        if (dto == null || dto.getTimestamp() == null || dto.getTank_temp_c() == null
+            || dto.getPaddle_rpm() == null) {
+            throw error(HttpStatus.BAD_REQUEST, "측정시간, 온도와 교반속도가 필요합니다.");
+        }
+        Process_execution_Entity execution = running(dto.getExecution_id());
+        if (dto.getSource_sample_id() != null) {
+            if (dto.getSource_sample_id().isBlank() || dto.getSource_sample_id().length() > 50) {
+                throw error(HttpStatus.BAD_REQUEST, "측정 요청번호는 1~50자여야 합니다.");
+            }
+            var previous = sr.findBySourceSampleId(dto.getSource_sample_id());
+            if (previous.isPresent()) {
+                var old = previous.get();
+                if (!old.getProcess_ExecutionEntity().getExecution_id().equals(dto.getExecution_id())) {
+                    throw error(HttpStatus.CONFLICT, "다른 공정에서 사용한 측정 요청번호입니다.");
+                }
+                if (!java.util.Objects.equals(old.getUsersEntity().getUserId(), dto.getUserId())
+                    || !same(old.getTank_temp_c(), dto.getTank_temp_c())
+                    || !same(old.getPaddle_rpm(), dto.getPaddle_rpm())
+                    || !same(old.getHomomixer_rpm(), dto.getHomomixer_rpm())
+                    || !same(old.getPh_level(), dto.getPh_level())
+                    || !same(old.getBulk_viscosity_cps(), dto.getBulk_viscosity_cps())
+                    || !same(old.getMotor_torque_pct(), dto.getMotor_torque_pct())
+                    || !same(old.getVacuum_kpa(), dto.getVacuum_kpa())
+                    || !same(old.getCooling_valve_pct(), dto.getCooling_valve_pct())) {
+                    throw error(HttpStatus.CONFLICT, "같은 측정 요청번호로 다른 값을 저장할 수 없습니다.");
+                }
+                return Sensor_telemetry_Dto.from(old);
+            }
+        }
+        boolean heat = "가열/혼합".equals(execution.getProcess_code());
+        boolean cool = "냉각".equals(execution.getProcess_code());
+        if (!heat && !cool) {
+            throw error(HttpStatus.CONFLICT, "가열/혼합 또는 냉각 공정에만 센서값을 저장할 수 있습니다.");
+        }
+        decimal(dto.getTank_temp_c(), 8, 3);
+        decimal(dto.getPaddle_rpm(), 10, 2);
+        decimal(dto.getHomomixer_rpm(), 10, 2);
+        decimal(dto.getBulk_viscosity_cps(), 12, 3);
+        decimal(dto.getPh_level(), 6, 3);
+        decimal(dto.getMotor_torque_pct(), 6, 2);
+        decimal(dto.getVacuum_kpa(), 8, 3);
+        decimal(dto.getCooling_valve_pct(), 6, 2);
+        if (dto.getRecord_source() != null && dto.getRecord_source().length() > 20) {
+            throw error(HttpStatus.BAD_REQUEST, "데이터 출처는 20자 이하여야 합니다.");
+        }
+        return Sensor_telemetry_Dto.from(sr.save(dto.toEntity(execution, worker(dto.getUserId()))));
+    }
+
+    
+    // 기존 공정 서비스와 같은 순서로 LOT·공정을 잠그고 진행 상태를 검사한다.
+    private Process_execution_Entity running(Long id) {
+        if (id == null || id <= 0) throw error(HttpStatus.BAD_REQUEST, "실제 공정 실행번호가 필요합니다.");
+        String batchId = executions.findBatchIdByExecutionId(id)
+            .orElseThrow(() -> error(HttpStatus.NOT_FOUND, "공정 실행 기록이 없습니다."));
+        var batch = batches.findByIdForUpdate(batchId)
+            .orElseThrow(() -> error(HttpStatus.NOT_FOUND, "LOT가 없습니다."));
+        var execution = executions.findByIdForUpdate(id)
+            .orElseThrow(() -> error(HttpStatus.NOT_FOUND, "공정 실행 기록이 없습니다."));
+        if (!"진행중".equals(batch.getStatus()) || !"진행중".equals(execution.getStatus())) {
+            throw error(HttpStatus.CONFLICT, "진행 중인 LOT와 공정에만 데이터를 저장할 수 있습니다.");
+        }
+        return execution;
+    }
+
+    // 저장 요청의 담당자가 실제 존재하는지 확인한다.
+    private Users_Entity worker(Integer id) {
+        if (id == null || id <= 0) throw error(HttpStatus.BAD_REQUEST, "작업자 번호가 필요합니다.");
+        return users.findById(id).orElseThrow(() -> error(HttpStatus.NOT_FOUND, "작업자가 없습니다."));
+    }
+
+    // DB DECIMAL 컬럼의 자릿수를 초과하는 입력을 저장 전에 거절한다.
+    private void decimal(BigDecimal value, int precision, int scale) {
+        if (value != null && (value.stripTrailingZeros().scale() > scale
+            || value.abs().compareTo(BigDecimal.TEN.pow(precision - scale)) >= 0)) {
+            throw error(HttpStatus.BAD_REQUEST, "측정값의 소수점 또는 정수 자릿수를 확인해 주세요.");
+        }
+    }
+
+    // 동일 요청의 수치 비교는 소수점 표현 자릿수 차이를 무시한다.
+    private boolean same(BigDecimal left, BigDecimal right) {
+        return left == null ? right == null : right != null && left.compareTo(right) == 0;
+    }
+
+    // 입력·상태 오류에 알맞은 HTTP 응답을 만든다.
+    private ResponseStatusException error(HttpStatus status, String message) {
+        return new ResponseStatusException(status, message);
     }
 }
