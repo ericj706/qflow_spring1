@@ -43,6 +43,7 @@ import springproject.model.repository.Users_Repository;
 public class Process_execution_Service {
     private final Process_execution_Repository pr;
     private final Batches_Repository batches_Repository;
+    private final Measurement_check_Service measurement_check_Service;
 
     // 1. 전체조회 + 조건검색 + 페이징
     public Page<Process_execution_Dto> search(
@@ -200,9 +201,27 @@ public class Process_execution_Service {
         // 8. 다음 공정 명 확인 ( 일단 벌크검사까지는 자동적으로 넘어갈 예쩡)
         String nextProcessCode = getNextProcessCode(entity.getProcess_code());
 
-        // 9. 알람 처리 여부와 벌크 검사 승인 결과 확인
+        // 공정별 측정값 판정 및 이상 발생 이력 저장
+        String processCode = entity.getProcess_code();
+
+        if ("원료 칭량".equals(processCode)) {
+            measurement_check_Service.checkMaterialExecution(entity);
+
+        } else if ("가열/혼합".equals(processCode)
+                || "냉각".equals(processCode)) {
+            measurement_check_Service.checkSensorExecution(entity);
+
+        } else if ("벌크 검사".equals(processCode)) {
+            measurement_check_Service.checkBulkQcExecution(entity);
+
+        } else if ("최종 포장 검사".equals(processCode)) {
+            measurement_check_Service.checkPackagingExecution(entity);
+        }
+
+        // 발생 이력의 처리 상태로 다음 공정 진행 여부 확인
         boolean alarmsHandled = checkAlarmStatus(entity);
         String qcBlockReason = checkBulkQcStatus(entity);
+
         // 다음 공정이 있고, 알람과 검사 조건을 모두 충족하면 자동 시작
         boolean startNext = nextProcessCode != null && alarmsHandled && qcBlockReason == null;
         
