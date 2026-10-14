@@ -15,6 +15,15 @@ import springproject.model.dto.Process_execution_Finish_Dto;
 @Component
 public class SimulationApiClient {
     private final RestClient api;
+    // LOT 생성 전에 지정 작업자가 존재하는지 확인해 불필요한 저장 요청을 막는다.
+    public void validateUser(int userId) {
+        List<?> users = api.get().uri("/mask/users").retrieve().body(List.class);
+        if (users == null || users.stream().noneMatch(user -> user instanceof Map<?, ?> row
+            && row.get("userId") instanceof Number id && id.intValue() == userId)) {
+            throw new IllegalStateException("작업자 " + userId
+                + "가 없습니다. users 초기 데이터를 등록하거나 simulation.user-id를 실제 사용자 번호로 설정해 주세요.");
+        }
+    }
     // 기존 REST API를 호출하는 클라이언트에 연결·응답 제한시간을 설정한다.
     public SimulationApiClient(RestClient.Builder builder,
         @Value("${simulation.api-base-url:http://localhost:${server.port:8080}}") String baseUrl) {
@@ -24,19 +33,16 @@ public class SimulationApiClient {
         api = builder.baseUrl(baseUrl).requestFactory(factory).build();
     }
 
-    // 첫 공정만 기존 시작 API로 생성한다. 응답 유실 시 조회로 이미 생성된 실행을 복구한다.
-    public Process_execution_Dto startOrFindProcess(String batchId, String firstProcess) {
+    // 사용자가 공정 시작 버튼으로 만든 실행만 조회한다. 생성기가 시작 API를 호출하지 않는다.
+    public Process_execution_Dto findStartedProcess(String batchId) {
         Map<?, ?> page = api.get().uri("/mask/process-executions?batchId={batchId}", batchId).retrieve().body(Map.class);
         Process_execution_Dto execution = null;
         if (page != null && page.get("content") instanceof List<?> content && !content.isEmpty()) {
             var row = (Map<?, ?>) content.get(0);
             execution = api.get().uri("/mask/process-executions/{id}", row.get("execution_id"))
                 .retrieve().body(Process_execution_Dto.class);
-        } else {
-            execution = api.post().uri("/mask/process-executions").body(Map.of("batchId", batchId, "processCode", firstProcess))
-                .retrieve().body(Process_execution_Dto.class);
         }
-        return java.util.Objects.requireNonNull(execution, "공정 시작 응답이 없습니다.");
+        return execution;
     }
 
     // 원료 실측량 합계를 기존 LOT 수정 API로 반영한다.

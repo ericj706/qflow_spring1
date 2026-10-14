@@ -56,6 +56,8 @@ public class Simulation_Service {
     private String lastError;
     private SimulationSample pending;
     private BigDecimal materialTotal = BigDecimal.ZERO;
+    private boolean lotPrepared;
+    private String completedBatchId;
 
     // 서버가 HTTP 요청을 받을 수 있는 시점부터 생성 스케줄을 허용한다.
     @EventListener(ApplicationReadyEvent.class)
@@ -80,7 +82,7 @@ public class Simulation_Service {
     private void generateTick() {
         if (pending != null) { savePending(); return; }
         if (batchId == null) {
-            if (!clock.instant().isBefore(nextLotAt)) createLot();
+            if (!lotPrepared && !clock.instant().isBefore(nextLotAt)) createLot();
             return;
         }
         if (executionId == null) { startProcess(); return; }
@@ -124,8 +126,10 @@ public class Simulation_Service {
         };
     }
 
-    // 고유한 LOT를 만들고 원료 칭량 공정을 시작한다.
+    // LOT 하나만 대기 상태로 등록한다. 공정 시작은 화면의 버튼을 기다린다.
     private void createLot() {
+        apiClient.validateUser(userId);
+        lotPrepared = true;
         batchId = generator.nextBatchId();
         processIndex = 0;
         stageTick = 0;
@@ -133,12 +137,17 @@ public class Simulation_Service {
         processStartedAt = null;
         materialTotal = BigDecimal.ZERO;
         emit("batches", generator.generateLot(packagingUnits));
-        startProcess();
+        waitingReason = "공정 시작 버튼을 눌러 주세요.";
     }
 
-    // 실제 첫 공정을 시작하거나 응답 유실로 이미 만들어진 실행을 복구한다.
+    // 사용자가 시작한 실제 실행이 조회된 이후에만 측정 데이터 생성을 허용한다.
     private void startProcess() {
-        useExecution(apiClient.startOrFindProcess(batchId, PROCESSES[0]));
+        var execution = apiClient.findStartedProcess(batchId);
+        if (execution == null) {
+            waitingReason = "공정 시작 버튼을 눌러 주세요.";
+            return;
+        }
+        useExecution(execution);
     }
 
     // 서버가 반환한 실제 실행번호와 공정명을 생성기의 현재 상태에 반영한다.
@@ -166,11 +175,13 @@ public class Simulation_Service {
             PROCESSES[processIndex], LocalDateTime.now(), Map.of("status", result.getFinishedExecution().getStatus(), "message", result.getMessage())));
         if (result.getNextExecution() != null) useExecution(result.getNextExecution());
         else if ("LOT 완료".equals(result.getNextProcessStatus())) {
+            completedBatchId = batchId;
             batchId = null;
             executionId = null;
             processStartedAt = null;
             waitingReason = null;
             nextLotAt = clock.instant().plusMillis(Math.max(0, lotDelayMs));
+            enabled = false;
         } else waitingReason = result.getMessage();
     }
 
@@ -198,6 +209,8 @@ public class Simulation_Service {
 
     // 수동으로 생성을 시작하거나 저장 실패 후 보관된 요청을 다시 시도한다.
     public synchronized Map<String, Object> start() {
+        // 완료 후 명시적으로 생성기를 다시 시작할 때만 새 LOT 등록을 허용한다.
+        if (batchId == null) lotPrepared = false;
         enabled = true;
         lastError = null;
         return status();
@@ -214,6 +227,7 @@ public class Simulation_Service {
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("enabled", enabled);
         result.put("batchId", batchId);
+        result.put("completedBatchId", completedBatchId);
         result.put("executionId", executionId);
         result.put("waitingReason", waitingReason);
         result.put("lastError", lastError);

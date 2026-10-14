@@ -21,6 +21,11 @@ public class SimulationApiCheck {
     private static boolean completed, approved, judged, failSensorOnce = true;
 
     public static void main(String[] args) throws Exception {
+        // Builder를 수동 주입하지 않아도 Spring이 실제 클라이언트 Bean을 생성하는지 확인한다.
+        try (var context = new org.springframework.context.annotation.AnnotationConfigApplicationContext(
+            springproject.config.RestClientConfig.class, SimulationApiClient.class)) {
+            check(context.getBean(SimulationApiClient.class) != null, "RestClient builder bean wiring");
+        }
         RealtimeDataCheck.verify();
         HttpServer server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
         server.createContext("/mask", exchange -> {
@@ -31,7 +36,9 @@ public class SimulationApiCheck {
             try {
                 Map<String, Object> body = method.equals("POST") || method.equals("PUT")
                     ? JSON.readValue(exchange.getRequestBody(), Map.class) : Map.of();
-                if (path.equals("/mask/batches") && method.equals("POST")) {
+                if (path.equals("/mask/users")) {
+                    response = List.of(Map.of("userId", 1));
+                } else if (path.equals("/mask/batches") && method.equals("POST")) {
                     check("대기".equals(body.get("status")), "LOT must start waiting");
                     batch = new LinkedHashMap<>(body); response = batch;
                 } else if (path.startsWith("/mask/batches/")) {
@@ -92,6 +99,8 @@ public class SimulationApiCheck {
         try {
             var generator = new SimulationDataGenerator();
             var client = new SimulationApiClient(RestClient.builder(), "http://127.0.0.1:" + server.getAddress().getPort());
+            try { client.validateUser(999); throw new AssertionError("missing user must be rejected"); }
+            catch (IllegalStateException expected) { check(rows.isEmpty() && batch == null, "missing user does not create a LOT"); }
             Simulation_Service simulation = new Simulation_Service(client, generator);
             set(simulation, "enabled", true); set(simulation, "sensorTicks", 2);
             set(simulation, "packagingUnits", 30); set(simulation, "lotDelayMs", 60000L);
@@ -99,6 +108,17 @@ public class SimulationApiCheck {
             set(simulation, "clock", clock); set(simulation, "processDurationSeconds", 20L);
             set(simulation, "userId", 1); set(generator, "inspectionFailureRate", 0.01);
             simulation.ready();
+            simulation.tick();
+            String preparedBatchId = (String) batch.get("batchId");
+            for (int i = 0; i < 5; i++) { clock.advance(); simulation.tick(); }
+            check(process == 0 && "대기".equals(batch.get("status")), "LOT waits for manual process start");
+            check(rows.isEmpty() && sensors.isEmpty(), "no measurements before start button");
+            check(preparedBatchId.equals(batch.get("batchId")), "only one LOT is prepared");
+            // 화면의 공정 시작 버튼과 같은 기존 REST 요청을 보낸다.
+            RestClient.create("http://127.0.0.1:" + server.getAddress().getPort())
+                .post().uri("/mask/process-executions")
+                .body(Map.of("batchId", preparedBatchId, "processCode", "원료 칭량"))
+                .retrieve().toBodilessEntity();
             simulation.tick();
             for (int i = 0; i < 19; i++) { clock.advance(); simulation.tick(); }
             check(process == 1, "no process finish before 20 seconds");
@@ -122,6 +142,8 @@ public class SimulationApiCheck {
             judged = true; simulation.tick();
             check(simulation.status().get("batchId") == null && "완료".equals(batch.get("status")), "LOT completes through API");
             int count = rows.size(); simulation.tick(); check(rows.size() == count, "next LOT delay");
+            for (int i = 0; i < 70; i++) { clock.advance(); simulation.tick(); }
+            check(preparedBatchId.equals(batch.get("batchId")), "no next LOT is automatically created after completion");
             simulation.stop(); simulation.tick(); check(rows.size() == count, "stop prevents writes");
             System.out.println("PASS: 20-second timing, distributed products, REST payloads, retry, approval wait, LOT completion, stop");
         } finally { server.stop(0); }
