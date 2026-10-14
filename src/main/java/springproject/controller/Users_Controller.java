@@ -40,20 +40,18 @@ public class Users_Controller {
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody Map<String, String> requestBody, HttpSession session) {
         try {
-            // 프론트엔드에서 숫자로 넘어온 userId 처리 (안전하게 Integer로 변환)
-            Object rawUserId = requestBody.get("userId");
-            Integer userId = rawUserId != null ? Integer.valueOf(rawUserId.toString()) : null;
-            String password = (String) requestBody.get("password");
-
-            if (userId == null) {
-                return ResponseEntity.badRequest().body("사용자 번호를 입력해주세요.");
+            String userIdValue = requestBody.get("userId");
+            if (userIdValue == null || userIdValue.isBlank()) {
+                return ResponseEntity.badRequest().body("사원 번호를 입력해 주세요.");
             }
+            Integer userId = Integer.valueOf(userIdValue);
+            String password = requestBody.get("password");
 
-            // 서비스의 login 호출
+            // 서비스의 login 호출 (세션에 정보 저장 및 민감정보가 제외된 DTO 반환)
             Users_Dto loginUser = us.login(userId, password, session);
             return ResponseEntity.ok(loginUser);
             
-        } catch (Exception e) {
+        } catch (IllegalArgumentException | IllegalStateException e) {
             return ResponseEntity.badRequest().body(e.getMessage());
         }
     }
@@ -69,15 +67,15 @@ public class Users_Controller {
     @GetMapping("/me")
     public ResponseEntity<?> getCurrentUser(HttpSession session) {
         Integer userId = (Integer) session.getAttribute("LOGIN_USER_ID");
+        String userName = (String) session.getAttribute("LOGIN_USER_NAME");
         String role = (String) session.getAttribute("LOGIN_USER_ROLE");
 
         if (userId == null) {
             return ResponseEntity.status(401).body("로그인되어 있지 않습니다.");
         }
 
-        // Key는 String, Value는 다양한 타입(Integer, String 등)을 담을 수 있도록 Object로 지정
-        Map<String, Object> userInfo = new HashMap<>();
-        userInfo.put("userId", userId);
+        Map<String, String> userInfo = new HashMap<>();
+        userInfo.put("userName", userName);
         userInfo.put("role", role);
 
         return ResponseEntity.ok(userInfo);

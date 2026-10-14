@@ -197,4 +197,14 @@ public interface Filling_packaging_Repository extends JpaRepository<Filling_pack
             @Param("startAt") LocalDateTime startAt,
             @Param("endAtExclusive") LocalDateTime endAtExclusive
     );
+
+    // 해당 공정 실행의 포장 기록 조회
+    @Query("""
+            SELECT f
+            FROM Filling_packaging_Entity f
+            WHERE f.process_execution_Entity.execution_id = :executionId
+            ORDER BY f.timestamp ASC, f.pouch_id ASC
+            """)
+    List<Filling_packaging_Entity> findByExecutionId(@Param("executionId") Long executionId);
+
 }
