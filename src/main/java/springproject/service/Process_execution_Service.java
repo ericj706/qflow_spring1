@@ -140,15 +140,18 @@ public class Process_execution_Service {
         }
 
         LocalDateTime startTime = LocalDateTime.now();
-        // 7. 첫 공정 실행 기록 생성
-        Process_execution_Entity entity =
-                Process_execution_Entity.builder()
-                        .batchesEntity(batch)
-                        .process_code(processCode)
-                        .start_time(startTime)
-                        .status("진행중")
-                        .record_source("수동입력")
-                        .build();
+        // 첫 공정의 담당관리자 조회
+        Users_Entity managerUser = findProcessManager(processCode);
+
+        // 첫 공정 실행 기록 생성
+        Process_execution_Entity entity = Process_execution_Entity.builder()
+                                            .batchesEntity(batch)
+                                            .managerUser(managerUser)
+                                            .process_code(processCode)
+                                            .start_time(startTime)
+                                            .status("진행중")
+                                            .record_source("수동입력")
+                                            .build();
 
         // 8. LOT도 생산 진행 상태로 변경
         batch.setStatus("진행중");
@@ -217,13 +220,20 @@ public class Process_execution_Service {
         // 최종 공정이며 알람 처리까지 끝났다면 LOT도 완료
         if (finalPackaging && alarmsHandled) {completeBatch(batch, finished, packagingSummary);}
 
-        // 11. 다음 고정 시작 (자동)
+        // 다음 공정 자동 시작
         Process_execution_Dto nextExecution = null;
-        if(startNext){
+        if (startNext) {
+            // 다음 공정의 담당관리자 조회
+            Users_Entity managerUser = findProcessManager(nextProcessCode);
             Process_execution_Entity nextEntity = Process_execution_Entity.builder()
-                                        .batchesEntity(batch).process_code(nextProcessCode)
-                                        .start_time(endTime).status("진행중").record_source("자동진행")
-                                        .previousExecution(finished).build();
+                                                .batchesEntity(batch)
+                                                .managerUser(managerUser)
+                                                .process_code(nextProcessCode)
+                                                .start_time(endTime)
+                                                .status("진행중")
+                                                .record_source("자동진행")
+                                                .previousExecution(finished)
+                                                .build();
             Process_execution_Entity nextSaved = pr.save(nextEntity);
             nextExecution = Process_execution_Dto.from(nextSaved);
         }
@@ -402,21 +412,24 @@ public class Process_execution_Service {
                 throw new ResponseStatusException(HttpStatus.CONFLICT,"같은 LOT의 다음 공정이 이미 진행 중입니다. 실행 이력을 확인해 주세요.");
             }
 
-            // 다음 공정 생성
-            Process_execution_Entity nextEntity =
-                    Process_execution_Entity.builder()
-                            .batchesEntity(batch)
-                            .previousExecution(entity)
-                            .process_code(nextProcessCode)
-                            .start_time(LocalDateTime.now())
-                            .status("진행중")
-                            .record_source("자동진행")
-                            .build();
-            Process_execution_Entity nextSaved = pr.save(nextEntity);
-            nextExecution = Process_execution_Dto.from(nextSaved);
-            nextProcessStatus = "다음 공정 시작";
-            message = nextProcessCode + " 공정이 시작되었습니다.";
-        }
+            // 다음 공정의 담당관리자 조회
+        Users_Entity managerUser = findProcessManager(nextProcessCode);
+        // 다음 공정 실행 기록 생성
+        Process_execution_Entity nextEntity = Process_execution_Entity.builder()
+                                                .batchesEntity(batch)
+                                                .managerUser(managerUser)
+                                                .previousExecution(entity)
+                                                .process_code(nextProcessCode)
+                                                .start_time(LocalDateTime.now())
+                                                .status("진행중")
+                                                .record_source("자동진행")
+                                                .build();
+
+        Process_execution_Entity nextSaved = pr.save(nextEntity);
+        nextExecution = Process_execution_Dto.from(nextSaved);
+
+        nextProcessStatus = "다음 공정 시작";
+        message = nextProcessCode + " 공정이 시작되었습니다.";message = nextProcessCode + " 공정이 시작되었습니다.";}
         
         // 10. 진행 재검사 결과 반환
         return Process_execution_Finish_Dto.builder()
@@ -586,6 +599,32 @@ public class Process_execution_Service {
         batch.setStatus("완료");
 
         // finish()/resume()의 트랜잭션 안에서 변경 내용이 자동 저장됨
+    }
+
+    // 해당 공정의 활성 관리자 중 담당 공정이 없는 첫 번째 관리자 조회
+    private Users_Entity findProcessManager(String processCode) {
+        if (processCode == null || processCode.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"담당관리자를 배정할 공정명이 없습니다.");
+        }
+        String role = switch (processCode) {
+            case "원료 칭량" -> "1공정관리자";
+            case "가열/혼합" -> "2공정관리자";
+            case "냉각" -> "3공정관리자";
+            case "벌크 검사" -> "4공정관리자";
+            case "최종 포장 검사" -> "5공정관리자";
+            default -> throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"지원하지 않는 공정입니다: " + processCode);
+        };
+        // 사용자번호가 작은 순서로 조회
+        List<Users_Entity> managers = users_Repository.findManagersForUpdate(role);
+        if (managers.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,processCode + " 공정의 활성 담당관리자가 없습니다.");
+        }
+        // 담당 중인 공정이 없는 관리자를 순서대로 찾음
+        for (Users_Entity manager : managers) {
+            long assignedCount = pr.countAssignedProcesses(manager.getUserId());
+            if (assignedCount == 0) {return manager;}
+        }
+        throw new ResponseStatusException(HttpStatus.CONFLICT,processCode + " 공정의 관리자가 모두 다른 공정을 담당 중입니다.");
     }
 
 

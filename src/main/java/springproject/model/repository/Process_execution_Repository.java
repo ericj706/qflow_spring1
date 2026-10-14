@@ -100,4 +100,21 @@ public interface Process_execution_Repository extends JpaRepository<Process_exec
           """)
      long countByFinalQcId(@Param("qcId") String qcId);
 
+     // 담당 중인 공정 수 확인
+     // 진행 중이거나, 종료 후 다음 공정으로 넘어가지 못한 실행을 포함
+     @Query("""
+          SELECT COUNT(p)
+          FROM Process_execution_Entity p
+          WHERE p.managerUser.userId = :userId
+               AND (p.status = '진행중'
+               OR (p.status = '완료'
+                    AND p.batchesEntity.status = '진행중'
+                    AND NOT EXISTS (
+                         SELECT n.execution_id
+                         FROM Process_execution_Entity n
+                         WHERE n.previousExecution = p
+                    )))
+          """)
+     long countAssignedProcesses(@Param("userId") Integer userId);
+
 }
