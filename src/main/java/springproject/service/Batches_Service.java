@@ -108,9 +108,8 @@ public class Batches_Service {
         return br.findById(batchId)
                 .map(Batches_Dto::from)
                 .orElseThrow(
-                        () -> new IllegalArgumentException(
-                                "존재하지 않는 배치 ID"
-                        )
+                        () -> new org.springframework.web.server.ResponseStatusException(
+                                org.springframework.http.HttpStatus.NOT_FOUND, "존재하지 않는 배치 ID")
                 );
     }
 

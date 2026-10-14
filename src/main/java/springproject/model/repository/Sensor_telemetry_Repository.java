@@ -14,6 +14,11 @@ import springproject.model.entity.Sensor_telemetry_Entity;
 
 @Repository 
 public interface Sensor_telemetry_Repository extends JpaRepository<Sensor_telemetry_Entity, Long> {
+
+    // 같은 생성 요청의 재전송 여부 확인
+    @Query("SELECT s FROM Sensor_telemetry_Entity s WHERE s.source_sample_id = :requestId")
+    java.util.Optional<Sensor_telemetry_Entity> findBySourceSampleId(@Param("requestId") String requestId);
+
     // 전체조회 + 조건검색 + 페이징
     @Query("""
             SELECT s

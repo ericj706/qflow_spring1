@@ -16,6 +16,8 @@ public class Sensor_telemetry_Dto {
     private Long sensor_id;
     private Long execution_id;
     private LocalDateTime timestamp;
+    private BigDecimal tank_temp_c;
+    private String source_sample_id;
     private BigDecimal paddle_rpm;
     private BigDecimal homomixer_rpm;
     private BigDecimal bulk_viscosity_cps;
@@ -35,6 +37,8 @@ public class Sensor_telemetry_Dto {
         return Sensor_telemetry_Entity.builder()
                 .process_ExecutionEntity(process_ExecutionEntity)
                 .timestamp(this.timestamp)
+                .tank_temp_c(this.tank_temp_c)
+                .source_sample_id(this.source_sample_id)
                 .paddle_rpm(this.paddle_rpm)
                 .homomixer_rpm(this.homomixer_rpm)
                 .bulk_viscosity_cps(this.bulk_viscosity_cps)
@@ -56,6 +60,8 @@ public class Sensor_telemetry_Dto {
                 .sensor_id(entity.getSensor_id())
                 .execution_id(entity.getProcess_ExecutionEntity() == null? null : entity.getProcess_ExecutionEntity().getExecution_id())
                 .timestamp(entity.getTimestamp())
+                .tank_temp_c(entity.getTank_temp_c())
+                .source_sample_id(entity.getSource_sample_id())
                 .paddle_rpm(entity.getPaddle_rpm())
                 .homomixer_rpm(entity.getHomomixer_rpm())
                 .bulk_viscosity_cps(entity.getBulk_viscosity_cps())
