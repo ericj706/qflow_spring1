@@ -471,14 +471,15 @@ public class Measurement_check_Service {
         }
     }
 
-    // 벌크 검사 공정의 측정값 판정 및 이상 발생 이력 저장
-    // finish()의 트랜잭션과 LOT·공정 잠금 안에서 호출
+    // 벌크 검사 판정 및 이상 발생 이력 저장
+    // 반환값:
+    // true  → 모든 검사 기록의 pH·점도 정상 + 외관·미세기포 합격
+    // false → 자동 합격 조건을 충족하지 못함
     @Transactional(propagation = Propagation.MANDATORY)
-    public void checkBulkQcExecution(Process_execution_Entity execution) {
+    public boolean checkBulkQcExecution(Process_execution_Entity execution) {
         // 1. 공정 실행 확인
         if (execution == null || execution.getExecution_id() == null || execution.getBatchesEntity() == null) {
-            throw new ResponseStatusException(
-                HttpStatus.CONFLICT,"판정할 공정 실행과 LOT가 필요합니다.");
+            throw new ResponseStatusException(HttpStatus.CONFLICT,"판정할 공정 실행과 LOT가 필요합니다.");
         }
         if (!"벌크 검사".equals(execution.getProcess_code())) {
             throw new ResponseStatusException(HttpStatus.CONFLICT,"벌크 검사 공정이 아닙니다.");
@@ -493,24 +494,42 @@ public class Measurement_check_Service {
             throw new ResponseStatusException(HttpStatus.CONFLICT,"저장된 벌크 검사 기록이 없어 공정을 종료할 수 없습니다.");
         }
 
+        // 모든 검사 기록이 자동 합격 조건을 충족하는지
+        boolean allPassed = true;
+
         // 3. 검사 기록별 판정
         for (Bulk_qc_Entity inspection : inspections) {
+            // LOT 연결 확인
             if (inspection.getBatchesEntity() == null || !execution.getBatchesEntity().getBatchId().equals(inspection.getBatchesEntity().getBatchId())) {
                 throw new ResponseStatusException(HttpStatus.CONFLICT,"벌크 검사 기록의 LOT 연결이 올바르지 않습니다.");
+            }
+
+            // 공정 실행 연결 확인
+            if (inspection.getProcess_execution_Entity() == null || !execution.getExecution_id().equals(inspection.getProcess_execution_Entity().getExecution_id())) {
+                throw new ResponseStatusException(HttpStatus.CONFLICT,"벌크 검사 기록의 공정 실행 연결이 올바르지 않습니다.");
             }
             if (inspection.getSample_time() == null) {
                 throw new ResponseStatusException(HttpStatus.CONFLICT,"검사시간이 없는 기록은 판정할 수 없습니다.");
             }
-            // 기존 메소드로 pH·점도를 각각 판정
-            List<Measurement_result_Dto> results = checkBulkQc(inspection.getQc_id());
 
-            // 4. 항목별 판정 결과 확인
+            // 4. 외관·미세기포 검사 확인
+            boolean appearancePassed = isInspectionPassed(inspection.getAppearance_code());
+            boolean microbubblePassed = isInspectionPassed(inspection.getMicrobubble_code());
+            if (!appearancePassed || !microbubblePassed) {allPassed = false;}
+
+            // 5. 기존 메소드로 pH·점도 판정
+            List<Measurement_result_Dto> results = checkBulkQc(inspection.getQc_id());
+            // 6. 항목별 판정 결과 확인
             for (Measurement_result_Dto result : results) {
                 String severity = result.getSeverity();
+                // 정상 항목은 발생 이력을 남기지 않음
                 if ("정상".equals(severity)) {continue;}
                 if (!"주의".equals(severity) && !"심각".equals(severity)) {
                     throw new ResponseStatusException(HttpStatus.CONFLICT,"확인할 수 없는 판정 결과입니다.");
                 }
+                // 주의·심각이 하나라도 있으면 자동 합격 불가
+                allPassed = false;
+                // 7. 판정에 사용한 규칙 조회
                 Anomaly_rule_Entity rule = anomaly_rule_Repository.findById(result.getRuleId()).orElse(null);
                 if (rule == null) {
                     throw new ResponseStatusException(HttpStatus.CONFLICT,"판정에 사용한 규칙이 없습니다.");
@@ -524,7 +543,7 @@ public class Measurement_check_Service {
                         + result.getUnit()
                         + ", 판정: " + severity;
 
-                // 5. 주의·심각 발생 이력 저장
+                // 8. 주의·심각 발생 이력 저장
                 Anomaly_event_Entity event =
                         Anomaly_event_Entity.builder()
                                 .batches_Entity(execution.getBatchesEntity())
@@ -543,6 +562,14 @@ public class Measurement_check_Service {
                 anomaly_event_Repository.save(event);
             }
         }
+        // 9. 전체 검사 결과 반환
+        return allPassed;
+    }
+    // 외관·미세기포 검사 통과 여부
+    private boolean isInspectionPassed(String value) {
+        if (value == null) {return false;}
+        String result = value.trim();
+        return "합격".equals(result) || "적합".equals(result);
     }
 
     // 제품 한 건의 중량·실링온도 판정
