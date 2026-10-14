@@ -50,6 +50,7 @@ public class SimulationApiClient {
         String operation = "완료".equals(java.util.Objects.requireNonNull(current).getStatus()) ? "resume" : "finish";
         try {
             var result = api.patch().uri("/mask/process-executions/{id}/" + operation, executionId)
+                .header("X-Simulation-Request", "true")
                 .retrieve().body(Process_execution_Finish_Dto.class);
             return new Completion(java.util.Objects.requireNonNull(result), null);
         } catch (RestClientResponseException response) {

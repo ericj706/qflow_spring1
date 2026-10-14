@@ -169,6 +169,18 @@ public class Simulation_Service {
             return;
         }
         var result = completion.result();
+        applyCompletion(result);
+    }
+
+    // 화면에서 종료·재개한 결과도 생성기에 연결한다. 이미 전환한 실행은 무시한다.
+    public synchronized void connectCompletedProcess(springproject.model.dto.Process_execution_Finish_Dto result) {
+        if (result == null || result.getFinishedExecution() == null || executionId == null
+            || !executionId.equals(result.getFinishedExecution().getExecution_id())) return;
+        applyCompletion(result);
+    }
+
+    // 실제 종료 결과를 기준으로 다음 공정의 데이터 생성 상태를 갱신한다.
+    private void applyCompletion(springproject.model.dto.Process_execution_Finish_Dto result) {
         remember(new SimulationSample(++sequence, "process_execution", batchId, executionId,
             PROCESSES[processIndex], LocalDateTime.now(), Map.of("status", result.getFinishedExecution().getStatus(), "message", result.getMessage())));
         if (result.getNextExecution() != null) useExecution(result.getNextExecution());

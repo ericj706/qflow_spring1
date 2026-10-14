@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RestController;
 
 import lombok.RequiredArgsConstructor;
@@ -69,15 +70,22 @@ public class Process_execution_Controller {
 
     // 공정 종료 
     @PatchMapping ("/{execution_id}/finish")
-    public Process_execution_Finish_Dto finish(@PathVariable(name = "execution_id") Long execution_id){
-        return ps.finish(execution_id);
+    public Process_execution_Finish_Dto finish(@PathVariable(name = "execution_id") Long execution_id,
+            @RequestHeader(name = "X-Simulation-Request", defaultValue = "false") boolean simulationRequest){
+        Process_execution_Finish_Dto result = ps.finish(execution_id);
+        // 생성기의 자체 요청은 응답 수신 후 반영하므로 중복 콜백과 잠금 대기를 피한다.
+        if (!simulationRequest) simulationService.connectCompletedProcess(result);
+        return result;
     }
 
     // 알람 처리 후 다음 공정 진행 여부 재검사
     @PatchMapping("/{execution_id}/resume")
     public Process_execution_Finish_Dto resume(
-            @PathVariable(name = "execution_id") Long executionId) {
-        return ps.resume(executionId);
+            @PathVariable(name = "execution_id") Long executionId,
+            @RequestHeader(name = "X-Simulation-Request", defaultValue = "false") boolean simulationRequest) {
+        Process_execution_Finish_Dto result = ps.resume(executionId);
+        if (!simulationRequest) simulationService.connectCompletedProcess(result);
+        return result;
     }
 
     // 벌크 검사 최종 결과 승인
