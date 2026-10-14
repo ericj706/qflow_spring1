@@ -2,6 +2,8 @@ package springproject.datagenerate;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.time.Clock;
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.ArrayDeque;
 import java.util.LinkedHashMap;
@@ -37,6 +39,11 @@ public class Simulation_Service {
     private int packagingUnits;
     @Value("${simulation.user-id:1}")
     private int userId;
+    @Value("${simulation.process-duration-seconds:20}")
+    private long processDurationSeconds;
+
+    private Clock clock = Clock.systemDefaultZone();
+    private LocalDateTime processStartedAt;
 
     private String batchId;
     private int processIndex;
@@ -73,11 +80,21 @@ public class Simulation_Service {
     private void generateTick() {
         if (pending != null) { savePending(); return; }
         if (batchId == null) {
-            if (!Instant.now().isBefore(nextLotAt)) createLot();
+            if (!clock.instant().isBefore(nextLotAt)) createLot();
             return;
         }
         if (executionId == null) { startProcess(); return; }
-        if (stageTick >= stageLimit()) { finishProcess(); return; }
+        int limit = stageLimit();
+        long elapsed = elapsedMillis();
+        long duration = Math.max(1, processDurationSeconds) * 1000;
+        // 20초 동안 목표 건수를 분산 생성하고, 지연된 주기는 누락 없이 따라잡는다.
+        int due = (int) Math.min(limit, (double) Math.max(0, elapsed) / duration * limit);
+        while (stageTick < due) generateSample();
+        if (elapsed >= duration && stageTick >= limit) finishProcess();
+    }
+
+    // 현재 공정의 데이터를 한 건 생성·저장한다.
+    private void generateSample() {
         stageTick++;
         switch (processIndex) {
             case 0 -> {
@@ -90,6 +107,11 @@ public class Simulation_Service {
             case 4 -> emit("filling_packaging", generator.generatePackaging(batchId, stageTick));
             default -> throw new IllegalStateException("알 수 없는 공정");
         }
+    }
+
+    // 실제 공정 시작 시각을 기준으로 경과시간을 계산한다.
+    private long elapsedMillis() {
+        return processStartedAt == null ? 0 : Math.max(0, Duration.between(processStartedAt, LocalDateTime.now(clock)).toMillis());
     }
 
     // 공정별로 생성할 측정 건수를 결정한다.
@@ -108,6 +130,7 @@ public class Simulation_Service {
         processIndex = 0;
         stageTick = 0;
         executionId = null;
+        processStartedAt = null;
         materialTotal = BigDecimal.ZERO;
         emit("batches", generator.generateLot(packagingUnits));
         startProcess();
@@ -124,6 +147,7 @@ public class Simulation_Service {
         processIndex = List.of(PROCESSES).indexOf(execution.getProcess_code());
         if (processIndex < 0) throw new IllegalStateException("알 수 없는 실제 공정명");
         stageTick = 0;
+        processStartedAt = execution.getStart_time() == null ? LocalDateTime.now(clock) : execution.getStart_time();
         waitingReason = null;
         remember(new SimulationSample(++sequence, "process_execution", batchId, executionId,
             PROCESSES[processIndex], LocalDateTime.now(), Map.of("execution_id", executionId, "status", execution.getStatus())));
@@ -144,8 +168,9 @@ public class Simulation_Service {
         else if ("LOT 완료".equals(result.getNextProcessStatus())) {
             batchId = null;
             executionId = null;
+            processStartedAt = null;
             waitingReason = null;
-            nextLotAt = Instant.now().plusMillis(Math.max(0, lotDelayMs));
+            nextLotAt = clock.instant().plusMillis(Math.max(0, lotDelayMs));
         } else waitingReason = result.getMessage();
     }
 
@@ -195,6 +220,9 @@ public class Simulation_Service {
         result.put("pendingData", pending);
         result.put("processCode", batchId == null ? null : PROCESSES[processIndex]);
         result.put("stageTick", stageTick);
+        result.put("processDurationSeconds", Math.max(1, processDurationSeconds));
+        result.put("processStartedAt", processStartedAt);
+        result.put("elapsedSeconds", elapsedMillis() / 1000);
         result.put("generatedCount", sequence);
         result.put("retainedCount", history.size());
         result.put("lotDelayMs", lotDelayMs);

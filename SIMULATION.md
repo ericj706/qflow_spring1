@@ -21,6 +21,7 @@ simulation.enabled=true
 simulation.api-base-url=http://localhost:8080
 simulation.user-id=1
 simulation.tick-delay-ms=1000
+simulation.process-duration-seconds=20
 simulation.lot-delay-ms=10000
 simulation.sensor-ticks=10
 simulation.packaging-units=10

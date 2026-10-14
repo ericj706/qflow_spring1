@@ -94,29 +94,36 @@ public class SimulationApiCheck {
             var client = new SimulationApiClient(RestClient.builder(), "http://127.0.0.1:" + server.getAddress().getPort());
             Simulation_Service simulation = new Simulation_Service(client, generator);
             set(simulation, "enabled", true); set(simulation, "sensorTicks", 2);
-            set(simulation, "packagingUnits", 3); set(simulation, "lotDelayMs", 60000L);
+            set(simulation, "packagingUnits", 30); set(simulation, "lotDelayMs", 60000L);
+            var clock = new TestClock();
+            set(simulation, "clock", clock); set(simulation, "processDurationSeconds", 20L);
             set(simulation, "userId", 1); set(generator, "inspectionFailureRate", 0.01);
             simulation.ready();
-            for (int i = 0; i < 30 && simulation.status().get("lastError") == null; i++) simulation.tick();
+            simulation.tick();
+            for (int i = 0; i < 19; i++) { clock.advance(); simulation.tick(); }
+            check(process == 1, "no process finish before 20 seconds");
+            clock.advance(); simulation.tick();
+            check(process == 2, "process advances at 20 seconds");
+            for (int i = 0; i < 30 && simulation.status().get("lastError") == null; i++) { clock.advance(); simulation.tick(); }
             check(simulation.status().get("lastError") != null, "HTTP failure pauses generation");
             check(simulation.status().get("pendingData") != null, "failed request is retained");
             simulation.start();
-            for (int i = 0; i < 35; i++) simulation.tick();
+            for (int i = 0; i < 100; i++) { clock.advance(); simulation.tick(); }
             check(simulation.status().get("lastError") == null, "retry succeeds");
             check(sensors.size() == 4, "sensor retry has no duplicate data");
             check(process == 4 && simulation.status().get("waitingReason") != null, "bulk approval blocks progression");
             check(rows.keySet().stream().noneMatch(key -> key.contains("filling-packagings")), "no early packaging data");
             approved = true;
-            for (int i = 0; i < 12; i++) simulation.tick();
+            for (int i = 0; i < 25; i++) { clock.advance(); simulation.tick(); }
             check(process == 5 && simulation.status().get("waitingReason") != null, "unjudged products block finish");
             check(rows.keySet().stream().filter(key -> key.contains("material-dispensing")).count() == 3, "three materials saved");
             check(rows.keySet().stream().filter(key -> key.contains("bulk-qc")).count() == 1, "one bulk inspection saved");
-            check(rows.keySet().stream().filter(key -> key.contains("filling-packagings")).count() == 3, "three products saved");
+            check(rows.keySet().stream().filter(key -> key.contains("filling-packagings")).count() == 30, "30 products saved within the packaging window");
             judged = true; simulation.tick();
             check(simulation.status().get("batchId") == null && "완료".equals(batch.get("status")), "LOT completes through API");
             int count = rows.size(); simulation.tick(); check(rows.size() == count, "next LOT delay");
             simulation.stop(); simulation.tick(); check(rows.size() == count, "stop prevents writes");
-            System.out.println("PASS: REST payloads, real execution IDs, failed-write retry, approval wait, all stages, LOT completion, stop");
+            System.out.println("PASS: 20-second timing, distributed products, REST payloads, retry, approval wait, LOT completion, stop");
         } finally { server.stop(0); }
     }
 
@@ -131,5 +138,14 @@ public class SimulationApiCheck {
 
     private static void check(boolean result, String message) {
         if (!result) throw new AssertionError(message);
+    }
+
+    // 실제로 기다리지 않고 초 단위 공정 경계를 검증한다.
+    private static class TestClock extends java.time.Clock {
+        private java.time.Instant instant = java.time.Instant.parse("2026-10-14T00:00:00Z");
+        void advance() { instant = instant.plusSeconds(1); }
+        @Override public java.time.Instant instant() { return instant; }
+        @Override public java.time.ZoneId getZone() { return java.time.ZoneId.of("Asia/Seoul"); }
+        @Override public java.time.Clock withZone(java.time.ZoneId zone) { return java.time.Clock.fixed(instant, zone); }
     }
 }
