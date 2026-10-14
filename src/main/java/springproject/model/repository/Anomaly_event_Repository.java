@@ -88,4 +88,7 @@ public interface Anomaly_event_Repository extends JpaRepository<Anomaly_event_En
                 ORDER BY a.occurredAt DESC, a.anomalyId DESC
                 """)
         List<Anomaly_event_Entity> findActivePopupAnomalies();
+
+    // 같은 측정값에 대한 이상 이력이 이미 저장되어 있는지 확인
+    boolean existsBySourceAlarmId(String sourceAlarmId);
 }

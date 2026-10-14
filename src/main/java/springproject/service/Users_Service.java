@@ -23,7 +23,6 @@ public class Users_Service {
             .toList();
     }
 
-
     // 단건조회
     @Transactional(readOnly = true)
     public Users_Dto findOne(Integer userId) {
@@ -34,10 +33,10 @@ public class Users_Service {
 
     //로그인
     @Transactional(readOnly = true)
-    public Users_Dto login(String userName, String password, jakarta.servlet.http.HttpSession session) {
+    public Users_Dto login(Integer userId, String password, jakarta.servlet.http.HttpSession session) {
         // 1. 이름으로 유저 조회
-        Users_Entity user = ur.findByUserName(userName)
-                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 사용자 이름입니다."));
+        Users_Entity user = ur.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 사용자입니다."));
 
         // 2. 계정 활성화 여부 확인 (isActive가 true/1 인지)
         if (user.getIsActive() == null || !user.getIsActive()) {
@@ -52,7 +51,7 @@ public class Users_Service {
         // 4. 세션에 로그인 정보 저장
         session.setAttribute("LOGIN_USER_ID", user.getUserId());
         session.setAttribute("LOGIN_USER_NAME", user.getUserName());
-        session.setAttribute("LOGIN_USER_ROLE", user.getRole()); // "전체관리자" 또는 "공정관리자"
+        session.setAttribute("LOGIN_USER_ROLE", user.getRole()); // "최고관리자" 또는 "1~5공정관리자"
 
         // 5. 민감정보가 제외된 기존 Users_Dto 반환
         return Users_Dto.from(user);

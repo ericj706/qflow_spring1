@@ -108,9 +108,8 @@ public class Batches_Service {
         return br.findById(batchId)
                 .map(Batches_Dto::from)
                 .orElseThrow(
-                        () -> new IllegalArgumentException(
-                                "존재하지 않는 배치 ID"
-                        )
+                        () -> new org.springframework.web.server.ResponseStatusException(
+                                org.springframework.http.HttpStatus.NOT_FOUND, "존재하지 않는 배치 ID")
                 );
     }
 
@@ -133,9 +132,9 @@ public class Batches_Service {
    if (dto.getUserId() != null) {
         usersEntity = ur.findById(dto.getUserId())
                 .orElseThrow(
-                        () -> new IllegalArgumentException(
-                                "존재하지 않는 담당자입니다."
-                        )
+                    () -> new org.springframework.web.server.ResponseStatusException(
+                        org.springframework.http.HttpStatus.BAD_REQUEST,
+                        "존재하지 않는 담당자입니다. users 테이블과 작업자 번호를 확인해 주세요.")
                 );
 }
 

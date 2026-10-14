@@ -3,6 +3,9 @@ package springproject.controller;
 import java.util.Map;
 
 import org.springframework.data.domain.Page;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
@@ -30,6 +33,14 @@ import org.springframework.web.bind.annotation.RequestBody;
 public class Process_execution_Controller {
 
     private final Process_execution_Service ps;
+    private final springproject.datagenerate.Simulation_Service simulationService;
+
+    // 입력·담당관리자·공정 상태 오류를 사유와 함께 반환
+    @ExceptionHandler(ResponseStatusException.class)
+    public ResponseEntity<Map<String, String>> handle(ResponseStatusException exception) {
+        String message = exception.getReason() == null ? "공정 요청을 처리할 수 없습니다." : exception.getReason();
+        return ResponseEntity.status(exception.getStatusCode()).body(Map.of("message", message));
+    }
 
     // 전체조회 + 조건검색 + 페이징
     @GetMapping
@@ -50,7 +61,10 @@ public class Process_execution_Controller {
     // 공정 시작시 저장
     @PostMapping("")
     public Process_execution_Dto save(@RequestBody Process_execution_Start_Dto request) {
-        return ps.save(request);
+        // Service의 트랜잭션 커밋이 성공한 뒤 생성기에 실행 정보를 연결한다.
+        Process_execution_Dto result = ps.save(request);
+        simulationService.connectStartedProcess(result);
+        return result;
     }
 
     // 공정 종료 

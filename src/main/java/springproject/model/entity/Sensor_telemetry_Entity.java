@@ -32,6 +32,14 @@ public class Sensor_telemetry_Entity {
     @Column(name = "timestamp", columnDefinition = "DATETIME(3)")
     private LocalDateTime timestamp;
 
+    // 유지 구간의 탱크 온도 측정값이다.
+    @Column(name = "tank_temp_c", precision = 8, scale = 3)
+    private BigDecimal tank_temp_c;
+
+    // 생성기 재전송 시 동일 측정값의 중복 INSERT를 방지한다.
+    @Column(name = "source_sample_id", length = 50, unique = true)
+    private String source_sample_id;
+
     @Column(name = "paddle_rpm", precision = 10, scale = 2)
     private BigDecimal paddle_rpm;
 
@@ -59,7 +67,4 @@ public class Sensor_telemetry_Entity {
     @ManyToOne
     @JoinColumn(name = "user_id", referencedColumnName = "user_id")
     private Users_Entity usersEntity;
-
-    @Column(name = "tank_temp_c", precision = 8, scale = 3)
-    private BigDecimal tank_temp_c;
 }

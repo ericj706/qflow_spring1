@@ -50,3 +50,11 @@ dependencies { // start.spring.io
 tasks.named('test') {
 	useJUnitPlatform()
 }
+
+// 실제 DB를 변경하지 않는 생성기 REST 계약 테스트
+tasks.register('verifySimulationApi', JavaExec) {
+    dependsOn tasks.named('testClasses')
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'springproject.SimulationApiCheck'
+    jvmArgs '-Dfile.encoding=UTF-8'
+}

@@ -40,11 +40,17 @@ public class Users_Controller {
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody Map<String, String> requestBody, HttpSession session) {
         try {
-            String userName = requestBody.get("userName");
-            String password = requestBody.get("password");
+            // 프론트엔드에서 숫자로 넘어온 userId 처리 (안전하게 Integer로 변환)
+            Object rawUserId = requestBody.get("userId");
+            Integer userId = rawUserId != null ? Integer.valueOf(rawUserId.toString()) : null;
+            String password = (String) requestBody.get("password");
 
-            // 서비스의 login 호출 (세션에 정보 저장 및 민감정보가 제외된 DTO 반환)
-            Users_Dto loginUser = us.login(userName, password, session);
+            if (userId == null) {
+                return ResponseEntity.badRequest().body("사용자 번호를 입력해주세요.");
+            }
+
+            // 서비스의 login 호출
+            Users_Dto loginUser = us.login(userId, password, session);
             return ResponseEntity.ok(loginUser);
             
         } catch (Exception e) {
@@ -62,16 +68,16 @@ public class Users_Controller {
     // ── 현재 로그인된 사용자 확인 API ──
     @GetMapping("/me")
     public ResponseEntity<?> getCurrentUser(HttpSession session) {
-        String userName = (String) session.getAttribute("LOGIN_USER_NAME");
+        Integer userId = (Integer) session.getAttribute("LOGIN_USER_ID");
         String role = (String) session.getAttribute("LOGIN_USER_ROLE");
 
-        if (userName == null) {
+        if (userId == null) {
             return ResponseEntity.status(401).body("로그인되어 있지 않습니다.");
         }
 
-        // Java 17에서 가장 안정적으로 동작하는 Map 생성 방식
-        Map<String, String> userInfo = new HashMap<>();
-        userInfo.put("userName", userName);
+        // Key는 String, Value는 다양한 타입(Integer, String 등)을 담을 수 있도록 Object로 지정
+        Map<String, Object> userInfo = new HashMap<>();
+        userInfo.put("userId", userId);
         userInfo.put("role", role);
 
         return ResponseEntity.ok(userInfo);

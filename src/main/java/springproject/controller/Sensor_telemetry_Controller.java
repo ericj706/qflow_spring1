@@ -8,6 +8,8 @@ import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -23,6 +25,12 @@ import springproject.service.Sensor_telemetry_Service;
 @RequiredArgsConstructor 
 public class Sensor_telemetry_Controller {
     private final Sensor_telemetry_Service ss;
+
+    // 실시간 센서 측정값 저장
+    @PostMapping 
+    public Sensor_telemetry_Dto save(@RequestBody Sensor_telemetry_Dto dto) {
+        return ss.save(dto);
+    }
 
     // 전체조회 + 조건검색 + 페이징
     @GetMapping

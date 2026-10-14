@@ -23,6 +23,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -33,6 +34,12 @@ import org.springframework.web.bind.annotation.RequestParam;
 
 public class Bulk_qc_Controller {
     private final Bulk_qc_Service bulk_qc_Service;
+
+    // 실시간 벌크 검사 원본 저장
+    @PostMapping 
+    public Bulk_qc_Dto save(@RequestBody Bulk_qc_Dto dto) {
+        return bulk_qc_Service.save(dto);
+    }
 
     // 전체조회 + 조건검색 + 페이징 + 합/불집계
     @GetMapping
@@ -49,6 +56,7 @@ public class Bulk_qc_Controller {
     public ResponseEntity<?> findOne(@PathVariable(name = "qc_id") String qc_id) {
         try {
             Bulk_qc_Dto dto = bulk_qc_Service.findOne(qc_id);
+            if (dto == null) return ResponseEntity.notFound().build();
             return ResponseEntity.ok(dto); // PASS든 FAIL이든 ID만 맞으면 무조건 200 OK 반환
         } catch (IllegalArgumentException e) {
             return ResponseEntity.status(404).body("존재하지 않는 ID입니다.");
