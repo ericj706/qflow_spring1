@@ -28,6 +28,7 @@ public interface Anomaly_event_Repository extends JpaRepository<Anomaly_event_En
               AND (:endAtExclusive IS NULL OR a.occurredAt < :endAtExclusive)
               AND (:severity IS NULL OR a.severity = :severity)
               AND (:actionStatus IS NULL OR a.actionStatus = :actionStatus)
+              AND (:sourceType IS NULL OR a.sourceType = :sourceType)
               AND (:batchId IS NULL OR b.batchId = :batchId)
               AND (
                     :batchIdKeyword IS NULL
@@ -44,6 +45,7 @@ public interface Anomaly_event_Repository extends JpaRepository<Anomaly_event_En
             @Param("endAtExclusive") LocalDateTime endAtExclusive,
             @Param("severity") String severity,
             @Param("actionStatus") String actionStatus,
+            @Param("sourceType") String sourceType,
             @Param("batchId") String batchId,
             @Param("batchIdKeyword") String batchIdKeyword,
             @Param("processCode") String processCode,
@@ -76,4 +78,14 @@ public interface Anomaly_event_Repository extends JpaRepository<Anomaly_event_En
             WHERE a.anomalyId = :anomalyId
             """)
     Optional<Anomaly_event_Entity> findByIdForUpdate(@Param("anomalyId") Long anomalyId);
+    // 이상 알림 팝업 전용 조회
+        // CSV 가져오기 데이터 제외 + 미처리 알림만 조회
+        @Query("""
+                SELECT a
+                FROM Anomaly_event_Entity a
+                WHERE (a.sourceType IS NULL OR a.sourceType <> 'CSV 가져오기')
+                AND a.actionStatus IN ('미확인', '확인됨')
+                ORDER BY a.occurredAt DESC, a.anomalyId DESC
+                """)
+        List<Anomaly_event_Entity> findActivePopupAnomalies();
 }

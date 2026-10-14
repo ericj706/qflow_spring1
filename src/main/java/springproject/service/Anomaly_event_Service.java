@@ -118,25 +118,37 @@ public class Anomaly_event_Service {
         LocalDateTime endAtExclusive = null;
         if (endDate != null) {endAtExclusive = endDate.plusDays(1).atStartOfDay();}
 
+        String sourceType = searchDto.getSourceType();
         // 한 페이지당 20개 고정
         // 정렬은 Repository의 ORDER BY 사용
         Pageable pageable = PageRequest.of(page, 20);
         Page<Anomaly_event_Entity> result =
-                anomaly_event_Repository.search(
-                        startAt,
-                        endAtExclusive,
-                        severity,
-                        actionStatus,
-                        batchId,
-                        batchIdKeyword,
-                        processCode,
-                        anomalyType,
-                        userId,
-                        pageable
-                );
+            anomaly_event_Repository.search(
+                    startAt,
+                    endAtExclusive,
+                    severity,
+                    actionStatus,
+                    sourceType,       // 추가
+                    batchId,
+                    batchIdKeyword,
+                    processCode,
+                    anomalyType,
+                    userId,
+                    pageable
+            );
 
         // 페이지 정보를 유지하면서 Entity → DTO 변환
         return result.map(Anomaly_event_Dto::from);
+    }
+    // 이상 알림 팝업 전용 조회
+    public List<Anomaly_event_Dto> findActivePopupAnomalies() {
+
+        List<Anomaly_event_Entity> anomalies =
+                anomaly_event_Repository.findActivePopupAnomalies();
+
+        return anomalies.stream()
+                .map(Anomaly_event_Dto::from)
+                .toList();
     }
 
     // 1) 개별조회

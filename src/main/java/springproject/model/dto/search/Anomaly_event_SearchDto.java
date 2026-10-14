@@ -41,5 +41,8 @@ public class Anomaly_event_SearchDto {
 
     // 조치 담당자 번호
     private Integer userId;
+
+    // 데이터 출처 (CSV 가져오기, TEST, SCHEDULER 등)
+    private String sourceType;
     
 }
