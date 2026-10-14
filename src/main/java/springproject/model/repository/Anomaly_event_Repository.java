@@ -84,7 +84,13 @@ public interface Anomaly_event_Repository extends JpaRepository<Anomaly_event_En
                 SELECT a
                 FROM Anomaly_event_Entity a
                 WHERE (a.sourceType IS NULL OR a.sourceType <> 'CSV 가져오기')
-                AND a.actionStatus IN ('미확인', '확인됨')
+                AND (
+                        a.actionStatus = '미확인'
+                        OR (
+                                a.actionStatus = '확인됨'
+                                AND a.severity = '심각'
+                        )
+                        )
                 ORDER BY a.occurredAt DESC, a.anomalyId DESC
                 """)
         List<Anomaly_event_Entity> findActivePopupAnomalies();
