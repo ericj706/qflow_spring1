@@ -76,4 +76,7 @@ public interface Anomaly_event_Repository extends JpaRepository<Anomaly_event_En
             WHERE a.anomalyId = :anomalyId
             """)
     Optional<Anomaly_event_Entity> findByIdForUpdate(@Param("anomalyId") Long anomalyId);
+
+    // 같은 측정값에 대한 이상 이력이 이미 저장되어 있는지 확인
+    boolean existsBySourceAlarmId(String sourceAlarmId);
 }

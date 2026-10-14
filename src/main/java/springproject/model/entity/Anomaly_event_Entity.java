@@ -114,7 +114,7 @@ public class Anomaly_event_Entity extends BaseTime{
 
     // 조치 관리자번호 - FK → users.user_id
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id", nullable = false)
+    @JoinColumn(name = "user_id", nullable = true)
     private Users_Entity users_Entity;
 
 
