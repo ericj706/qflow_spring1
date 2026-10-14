@@ -43,5 +43,14 @@ public interface Sensor_telemetry_Repository extends JpaRepository<Sensor_teleme
             @Param("userId") Integer userId,
             Pageable pageable
     );
-    
+
+    // 해당 공정 실행의 센서 측정 기록 조회
+        @Query("""
+                SELECT s
+                FROM Sensor_telemetry_Entity s
+                WHERE s.process_ExecutionEntity.execution_id = :executionId
+                ORDER BY s.timestamp ASC, s.sensor_id ASC
+                """)
+        List<Sensor_telemetry_Entity> findByExecutionId(@Param("executionId") Long executionId);
+        
 }

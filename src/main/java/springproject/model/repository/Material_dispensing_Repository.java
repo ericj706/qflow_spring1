@@ -2,6 +2,7 @@ package springproject.model.repository;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -51,5 +52,22 @@ public interface  Material_dispensing_Repository extends JpaRepository<Material_
             @Param("userId") Integer userId,
             Pageable pageable
     );
+    // 칭량 기록에 연결된 LOT 번호 조회
+     @Query("""
+          SELECT m.batchesEntity.batchId
+          FROM Material_dispensing_Entity m
+          WHERE m.dispenseId = :dispenseId
+          """)
+     Optional<String> findBatchIdByDispenseId(@Param("dispenseId") String dispenseId);
     
+     // 해당 공정 실행의 원료 칭량 기록 조회
+     // 논리적으로 삭제된 기록은 제외
+     @Query("""
+          SELECT m
+          FROM Material_dispensing_Entity m
+          WHERE m.processExecutionEntity.execution_id = :executionId
+               AND (m.status IS NULL OR m.status <> '삭제')
+          ORDER BY m.dispensedAt ASC, m.dispenseId ASC
+          """)
+     List<Material_dispensing_Entity> findByExecutionId(@Param("executionId") Long executionId);
 }
