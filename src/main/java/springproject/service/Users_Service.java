@@ -51,7 +51,7 @@ public class Users_Service {
         // 4. 세션에 로그인 정보 저장
         session.setAttribute("LOGIN_USER_ID", user.getUserId());
         session.setAttribute("LOGIN_USER_NAME", user.getUserName());
-        session.setAttribute("LOGIN_USER_ROLE", user.getRole()); // "전체관리자" 또는 "공정관리자"
+        session.setAttribute("LOGIN_USER_ROLE", user.getRole()); // "최고관리자" 또는 "1~5공정관리자"
 
         // 5. 민감정보가 제외된 기존 Users_Dto 반환
         return Users_Dto.from(user);

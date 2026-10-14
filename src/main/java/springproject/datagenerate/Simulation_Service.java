@@ -85,7 +85,8 @@ public class Simulation_Service {
             if (!lotPrepared && !clock.instant().isBefore(nextLotAt)) createLot();
             return;
         }
-        if (executionId == null) { startProcess(); return; }
+        // 시작 Controller가 실행번호를 연결할 때까지 DB 조회·측정을 하지 않는다.
+        if (executionId == null) return;
         int limit = stageLimit();
         long elapsed = elapsedMillis();
         long duration = Math.max(1, processDurationSeconds) * 1000;
@@ -140,13 +141,10 @@ public class Simulation_Service {
         waitingReason = "공정 시작 버튼을 눌러 주세요.";
     }
 
-    // 사용자가 시작한 실제 실행이 조회된 이후에만 측정 데이터 생성을 허용한다.
-    private void startProcess() {
-        var execution = apiClient.findStartedProcess(batchId);
-        if (execution == null) {
-            waitingReason = "공정 시작 버튼을 눌러 주세요.";
-            return;
-        }
+    // 시작 Controller가 커밋 성공 후 호출한다. 다른 LOT와 중복 연결은 무시한다.
+    public synchronized void connectStartedProcess(Process_execution_Dto execution) {
+        if (batchId == null || executionId != null || execution == null
+            || !batchId.equals(execution.getBatchId()) || !"진행중".equals(execution.getStatus())) return;
         useExecution(execution);
     }
 
@@ -181,7 +179,8 @@ public class Simulation_Service {
             processStartedAt = null;
             waitingReason = null;
             nextLotAt = clock.instant().plusMillis(Math.max(0, lotDelayMs));
-            enabled = false;
+            // 완료 후 다음 LOT 하나만 준비하고, 새 공정 시작 버튼을 기다린다.
+            lotPrepared = false;
         } else waitingReason = result.getMessage();
     }
 
