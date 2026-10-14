@@ -512,10 +512,26 @@ public class Measurement_check_Service {
                 throw new ResponseStatusException(HttpStatus.CONFLICT,"검사시간이 없는 기록은 판정할 수 없습니다.");
             }
 
-            // 4. 외관·미세기포 검사 확인
-            boolean appearancePassed = isInspectionPassed(inspection.getAppearance_code());
-            boolean microbubblePassed = isInspectionPassed(inspection.getMicrobubble_code());
+            // 4. 외관·미세기포 검사 결과 확인
+            String appearance = inspection.getAppearance_code();
+            String microbubble = inspection.getMicrobubble_code();
+            if (appearance != null) {appearance = appearance.trim();}
+            if (microbubble != null) {microbubble = microbubble.trim();}
+            boolean appearancePassed = isInspectionPassed(appearance);
+            boolean microbubblePassed = isInspectionPassed(microbubble);
+            // 명시적으로 불합격인 경우
+            boolean appearanceFailed = "불합격".equals(appearance) || "부적합".equals(appearance);
+            boolean microbubbleFailed = "불합격".equals(microbubble) || "부적합".equals(microbubble);
+            // 미입력이나 알 수 없는 값도 자동 합격은 허용하지 않음
             if (!appearancePassed || !microbubblePassed) {allPassed = false;}
+            // 외관 또는 미세기포 불합격 → 종합결과 불합격
+            if (appearanceFailed || microbubbleFailed) {
+                // 이미 최종 승인된 검사 결과는 자동으로 덮어쓰지 않음
+                boolean approvedRecord = execution.getFinalBulkQc() != null && inspection.getQc_id().equals(execution.getFinalBulkQc().getQc_id());
+                if (!approvedRecord) {inspection.setOverall_qc_result("불합격");}
+            }
+
+            
 
             // 5. 기존 메소드로 pH·점도 판정
             List<Measurement_result_Dto> results = checkBulkQc(inspection.getQc_id());
