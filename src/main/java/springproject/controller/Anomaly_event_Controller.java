@@ -36,10 +36,10 @@ public class Anomaly_event_Controller {
             return  Page_response.from(result, Map.of());
         }
     // 이상 알림 팝업 전용 조회
-        @GetMapping("/popup")
-        public List<Anomaly_event_Dto> getPopupAnomalies() {
-            return anomaly_event_Service.findActivePopupAnomalies();
-        }
+    @GetMapping(value = "/popup", produces = "application/json")
+    public List<Anomaly_event_Dto> getPopupAnomalies() {
+        return anomaly_event_Service.findActivePopupAnomalies();
+    }
 
     // 1) 개별조회
         @GetMapping ("/{anomaly_id}")
