@@ -4,7 +4,7 @@
 
 | 파일 | 역할 |
 |---|---|
-| `SchedulerConfig.java` | 설정된 간격으로 실행하는 스케줄러 |
+| `Scheduler.java` | 설정된 간격으로 실행하는 스케줄러 |
 | `Simulation_Service.java` | LOT·공정 상태, 승인 대기, 실패 재시도 제어 |
 | `SimulationApiClient.java` | REST 통신, 저장 여부 조회 및 재전송 처리 |
 | `SimulationDataGenerator.java` | 난수 측정값과 요청 데이터 생성 |
@@ -31,6 +31,15 @@ simulation.inspection-failure-rate=0.01
 `user-id`는 DB에 존재하는 작업자 번호입니다. 서버 포트를 바꾸면 API 주소도 맞추세요.
 API 주소를 생략하면 `server.port`를 사용한 localhost 주소가 기본값입니다.
 자동 생성을 끄려면 `simulation.enabled=false`를 설정합니다.
+
+모든 공정은 서버가 반환한 실제 start_time을 기준으로 20초 동안 진행합니다.
+스케줄러는 기본 1초마다 확인하며, 공정별 목표 건수를 20초 구간에 분산 생성합니다.
+예를 들어 포장 목표가 10개면 약 2초마다 한 개, 30개면 한 주기에 여러 개를 저장합니다.
+20초 경과 및 데이터 저장 완료 후 종료를 요청합니다. 통신 지연·검사 승인·최종 판정
+대기로 실제 종료와 다음 공정 시작은 더 늦어질 수 있습니다.
+공정의 실제 소요시간은 기존 process_execution.duration_min에 기록합니다.
+이 시간 제어는 생성기가 관리하는 LOT에 적용되며, 화면에서 별도로 시작한 LOT를
+자동으로 찾아 생성 대상에 연결하는 기능은 포함하지 않습니다.
 
 ## API
 
