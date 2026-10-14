@@ -127,7 +127,7 @@ public class SimulationDataGenerator {
         if ("sensor_telemetry".equals(tableName)) {
             data.put("execution_id", executionId);
             data.put("source_sample_id", UUID.randomUUID().toString());
-        } else if ("bulk_qc".equals(tableName) || "filling_packaging".equals(tableName)) data.put("executionId", executionId);
+        } else if ("material_dispensing".equals(tableName) || "bulk_qc".equals(tableName) || "filling_packaging".equals(tableName)) data.put("executionId", executionId);
         return Map.copyOf(data);
     }
 

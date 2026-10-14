@@ -14,7 +14,9 @@ import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
+import lombok.ToString;
 
 @Entity
 @Table(name = "material_dispensing")
@@ -65,6 +67,13 @@ public class Material_dispensing_Entity extends BaseTime{
     // 칭량상태 (VARCHAR(50))
     @Column(name = "status", length = 50)
     private String status;
+
+    // 이 칭량 기록이 생성된 공정 실행
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "execution_id")
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
+    private Process_execution_Entity processExecutionEntity;
 
    
 }
