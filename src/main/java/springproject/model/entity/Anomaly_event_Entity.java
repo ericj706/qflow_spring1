@@ -104,25 +104,13 @@ public class Anomaly_event_Entity extends BaseTime{
     @Column(name = "duration_sec")
     private Integer durationSec;
 
-
-    // 조치상태 (미확인, 확인됨, 조치중, 조치완료)
+    // 알람 처리 진행 상태 (미확인, 확인됨, 조치중, 조치완료)
     @Column(name = "action_status", length = 30)
     private String actionStatus;
 
-    // 조치 종류
-    // PROCESS_ADJUST, EQUIPMENT_CHECK, REINSPECTION,
-    // PRODUCTION_PAUSE, OTHER
-    @Column(name = "action_type", length = 30)
-    private String actionType;
-
-    // 조치내용
+    // 관리자가 실제 수행한 조치내용
     @Column(name = "action_note", columnDefinition = "TEXT")
     private String actionNote;
-
-    // 기타 선택 시 비고
-    @Column(name = "action_remarks", columnDefinition = "TEXT")
-    private String actionRemarks;
-
 
     // 조치 관리자번호 - FK → users.user_id
     @ManyToOne(fetch = FetchType.LAZY)
