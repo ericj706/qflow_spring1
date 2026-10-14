@@ -12,15 +12,21 @@ import org.springframework.web.server.ResponseStatusException;
 import lombok.RequiredArgsConstructor;
 import springproject.model.dto.Measurement_result_Dto;
 import springproject.model.entity.Anomaly_rule_Entity;
+import springproject.model.entity.Bulk_qc_Entity;
 import springproject.model.entity.Material_dispensing_Entity;
+import springproject.model.entity.Sensor_telemetry_Entity;
 import springproject.model.repository.Anomaly_rule_Repository;
+import springproject.model.repository.Bulk_qc_Repository;
 import springproject.model.repository.Material_dispensing_Repository;
+import springproject.model.repository.Sensor_telemetry_Repository;
 
 @Service 
 @RequiredArgsConstructor 
 public class Measurement_check_Service {
     private final Material_dispensing_Repository material_dispensing_Repository;
     private final Anomaly_rule_Repository anomaly_rule_Repository;
+    private final Bulk_qc_Repository bulk_qc_Repository;
+    private final Sensor_telemetry_Repository sensor_telemetry_Repository;
 
     // 측정값을 규칙과 비교하여 정상 / 주의 / 심각 반환
     public String checkSeverity(Anomaly_rule_Entity anomalyRule, BigDecimal measuredValue){
@@ -109,7 +115,7 @@ public class Measurement_check_Service {
         return new ResponseStatusException(HttpStatus.CONFLICT,"이상 감지 규칙 설정 오류: "+message);
     }
 
-    // 저장된 원료 칭량 기족 한 건을 판정 
+    // 저장된 원료 칭량 기족 한 건을 판정  1. 원료칭량
     @Transactional (readOnly = true)
     public Measurement_result_Dto checkMaterial(String dispenseId){
         // 1. 칭량번호 확인
@@ -178,6 +184,122 @@ public class Measurement_check_Service {
                 .unit(unit)
                 .severity(severity)
                 .build();
+    }
+
+    // 측정항목 한 개의 활성 규칙을 조회하고 판정 결과 생성
+    private Measurement_result_Dto checkMeasurement(String sourceTable,
+                                                    String sourceRecordId,
+                                                    String processCode,
+                                                    String sensorName,
+                                                    String conditionType,
+                                                    BigDecimal measuredValue,
+                                                    String unit){
+        if(measuredValue == null){throw new ResponseStatusException(HttpStatus.CONFLICT,"저장된 측정값이 없습니다: "+sensorName);}
+        List<Anomaly_rule_Entity> rules = anomaly_rule_Repository.findByProcessCodeAndSensorNameAndConditionTypeAndIsActiveTrue(processCode, sensorName, conditionType);
+        if(rules.isEmpty()){throw new ResponseStatusException(HttpStatus.CONFLICT,"활성 규칙이 없습니다: "+processCode+"\\"+sensorName);}
+        if (rules.size() > 1) {throw new ResponseStatusException(HttpStatus.CONFLICT,"같은 조건의 활성 규칙이 여러 개입니다: "+ processCode + " / " + sensorName);}        
+        Anomaly_rule_Entity rule = rules.get(0);
+        String severity = checkSeverity(rule, measuredValue);
+        return Measurement_result_Dto.builder()
+                .sourceTable(sourceTable)
+                .sourceRecordId(sourceRecordId)
+                .ruleId(rule.getRuleId())
+                .processCode(processCode)
+                .sensorName(sensorName)
+                .measuredValue(measuredValue)
+                .unit(unit)
+                .severity(severity).build();                                       
+    }
+
+    // 저장된 벌크 검사 한 건의 pH·점도를 각각 판정 4. 벌크검사
+    @Transactional(readOnly = true)
+    public List<Measurement_result_Dto> checkBulkQc(String qcId) {
+        // 1. 검사번호 확인
+        if (qcId == null || qcId.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"검사번호를 입력해 주세요.");
+        }
+        // 2. 검사 기록 조회
+        Bulk_qc_Entity bulkQc =bulk_qc_Repository.findById(qcId).orElse(null);
+        if (bulkQc == null) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND,"해당 벌크 검사 기록이 없습니다.");
+        }
+        // 3. pH 판정
+        Measurement_result_Dto phResult = checkMeasurement(
+                "bulk_qc",bulkQc.getQc_id(),"벌크 검사","ph_measured","RANGE",bulkQc.getPh_measured(),"pH");
+        // 4. 점도 판정
+        Measurement_result_Dto viscosityResult = checkMeasurement(
+                "bulk_qc",bulkQc.getQc_id(),"벌크 검사","viscosity_measured","RANGE",bulkQc.getViscosity_measured(),"cP");
+        // 5. 항목별 판정 결과 반환
+        return List.of(phResult, viscosityResult);
+    }
+
+    // 공정명 + tank_temp_c 온도 규칙을 선택하고 판정  2.가열/혼합 , 3. 냉각
+    private Measurement_result_Dto checkTankTemperature(Sensor_telemetry_Entity sensor, String processCode){
+        List<Anomaly_rule_Entity> rules = anomaly_rule_Repository.findByProcessCodeAndSensorNameAndIsActiveTrue(processCode, "tank_temp_c");
+        if(rules.isEmpty()){throw new ResponseStatusException(HttpStatus.CONFLICT,processCode + " 공정의 활성 온도 규칙이 없습니다.");}
+        if (rules.size() > 1) {throw new ResponseStatusException(HttpStatus.CONFLICT,processCode + " 공정의 활성 온도 규칙은 한 개여야 합니다.");}
+        Anomaly_rule_Entity rule = rules.get(0); // 규칙 꺼내기 조건들을 통과하면 조회되는 조건은 결국하나만 조회
+        // 이번 방식은 단계별 규칙이 아닌 일반 수치 범위 규칙 사용
+        if(!"RANGE".equals(rule.getConditionType())){
+            throw new ResponseStatusException(HttpStatus.CONFLICT,"공정 종료 온도 기준을 확인하고 조건 유형을 RANGE로 설정해 주세요.");}
+        BigDecimal temperature = sensor.getTank_temp_c();
+        if (temperature == null) {throw new ResponseStatusException(HttpStatus.CONFLICT,"센서 기록에 탱크 온도가 없습니다.");}
+        String severity = checkSeverity(rule, temperature);
+        return Measurement_result_Dto.builder()
+            .sourceTable("sensor_telemetry")
+            .sourceRecordId(sensor.getSensor_id().toString())
+            .ruleId(rule.getRuleId())
+            .processCode(processCode)
+            .sensorName("tank_temp_c")
+            .measuredValue(temperature)
+            .unit("℃")
+            .severity(severity)
+            .build();
+    }
+
+    // 센서 기록 조회 및 연결된 공정 확인
+    private Sensor_telemetry_Entity findSensor(Long sensorId,String processCode) {
+        if (sensorId == null || sensorId <= 0) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"올바른 센서 측정번호를 입력해 주세요.");
+        }
+        Sensor_telemetry_Entity sensor = sensor_telemetry_Repository.findById(sensorId).orElse(null);
+        if (sensor == null) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND,"해당 센서 측정 기록이 없습니다.");
+        }
+        if (sensor.getProcess_ExecutionEntity() == null) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,"센서 기록에 공정 실행이 연결되어 있지 않습니다.");
+        }
+        String savedProcessCode = sensor.getProcess_ExecutionEntity().getProcess_code();
+        if (!processCode.equals(savedProcessCode)) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,processCode + " 공정의 센서 기록이 아닙니다.");
+        }
+        return sensor;
+    }
+
+    // 2공정: 가열/혼합 온도·패들 RPM 판정
+    @Transactional(readOnly = true)
+    public List<Measurement_result_Dto> checkHeatingMixing(Long sensorId) {
+        Sensor_telemetry_Entity sensor = findSensor(sensorId, "가열/혼합");
+        // 탱크 온도 판정
+        Measurement_result_Dto temperatureResult = checkTankTemperature(sensor, "가열/혼합");
+        // 패들 RPM 판정
+        Measurement_result_Dto rpmResult = checkMeasurement(
+                                                    "sensor_telemetry",
+                                                    sensor.getSensor_id().toString(),
+                                                    "가열/혼합",
+                                                    "paddle_rpm",
+                                                    "RANGE",
+                                                    sensor.getPaddle_rpm(),
+                                                    "rpm");
+        return List.of(temperatureResult, rpmResult);
+    }
+
+    // 3공정: 냉각 온도 판정
+    @Transactional(readOnly = true)
+    public List<Measurement_result_Dto> checkCooling(Long sensorId) {
+        Sensor_telemetry_Entity sensor = findSensor(sensorId, "냉각");
+        Measurement_result_Dto temperatureResult = checkTankTemperature(sensor, "냉각");
+        return List.of(temperatureResult);
     }
 
 
