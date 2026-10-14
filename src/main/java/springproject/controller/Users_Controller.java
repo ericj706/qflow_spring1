@@ -40,14 +40,18 @@ public class Users_Controller {
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody Map<String, String> requestBody, HttpSession session) {
         try {
-            String userName = requestBody.get("userName");
+            String userIdValue = requestBody.get("userId");
+            if (userIdValue == null || userIdValue.isBlank()) {
+                return ResponseEntity.badRequest().body("사원 번호를 입력해 주세요.");
+            }
+            Integer userId = Integer.valueOf(userIdValue);
             String password = requestBody.get("password");
 
             // 서비스의 login 호출 (세션에 정보 저장 및 민감정보가 제외된 DTO 반환)
-            Users_Dto loginUser = us.login(userName, password, session);
+            Users_Dto loginUser = us.login(userId, password, session);
             return ResponseEntity.ok(loginUser);
             
-        } catch (Exception e) {
+        } catch (IllegalArgumentException | IllegalStateException e) {
             return ResponseEntity.badRequest().body(e.getMessage());
         }
     }
@@ -69,7 +73,6 @@ public class Users_Controller {
             return ResponseEntity.status(401).body("로그인되어 있지 않습니다.");
         }
 
-        // Java 17에서 가장 안정적으로 동작하는 Map 생성 방식
         Map<String, String> userInfo = new HashMap<>();
         userInfo.put("userName", userName);
         userInfo.put("role", role);
