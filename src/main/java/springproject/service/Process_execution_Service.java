@@ -159,7 +159,8 @@ public class Process_execution_Service {
 
         // 조회한 batch는 트랜잭션 안에서 변경 내용이 자동 반영됨
         Process_execution_Entity saved = pr.save(entity);
-        return Process_execution_Dto.from(saved); 
+        Process_execution_Dto result = Process_execution_Dto.from(saved);
+        return result;
 
 } 
 

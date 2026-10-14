@@ -33,18 +33,6 @@ public class SimulationApiClient {
         api = builder.baseUrl(baseUrl).requestFactory(factory).build();
     }
 
-    // 사용자가 공정 시작 버튼으로 만든 실행만 조회한다. 생성기가 시작 API를 호출하지 않는다.
-    public Process_execution_Dto findStartedProcess(String batchId) {
-        Map<?, ?> page = api.get().uri("/mask/process-executions?batchId={batchId}", batchId).retrieve().body(Map.class);
-        Process_execution_Dto execution = null;
-        if (page != null && page.get("content") instanceof List<?> content && !content.isEmpty()) {
-            var row = (Map<?, ?>) content.get(0);
-            execution = api.get().uri("/mask/process-executions/{id}", row.get("execution_id"))
-                .retrieve().body(Process_execution_Dto.class);
-        }
-        return execution;
-    }
-
     // 원료 실측량 합계를 기존 LOT 수정 API로 반영한다.
     public void updateActualBulk(String batchId, BigDecimal total) {
         Batches_Dto batch = api.get().uri("/mask/batches/{id}", batchId).retrieve().body(Batches_Dto.class);
