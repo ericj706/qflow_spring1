@@ -27,6 +27,7 @@ public class Sensor_telemetry_Dto {
     private BigDecimal cooling_valve_pct;
     private String record_source;
     private Integer userId;
+    
 
     // DTO → Entity
     public Sensor_telemetry_Entity toEntity(
