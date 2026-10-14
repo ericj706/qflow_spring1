@@ -204,6 +204,9 @@ public class Process_execution_Service {
         // 공정별 측정값 판정 및 이상 발생 이력 저장
         String processCode = entity.getProcess_code();
 
+        // 벌크 검사 전체 항목의 자동 합격 가능 여부
+        boolean bulkQcPassed = false;
+
         if ("원료 칭량".equals(processCode)) {
             measurement_check_Service.checkMaterialExecution(entity);
 
@@ -212,10 +215,38 @@ public class Process_execution_Service {
             measurement_check_Service.checkSensorExecution(entity);
 
         } else if ("벌크 검사".equals(processCode)) {
-            measurement_check_Service.checkBulkQcExecution(entity);
+            bulkQcPassed = measurement_check_Service.checkBulkQcExecution(entity);
 
         } else if ("최종 포장 검사".equals(processCode)) {
             measurement_check_Service.checkPackagingExecution(entity);
+        }
+
+        // 벌크 검사 전체 항목이 정상인 경우 자동 합격 처리
+        if ("벌크 검사".equals(processCode)) {
+            entity.setBulkQcAutoPassed(false);
+            // 사람이 이미 승인한 결과는 자동 판정으로 덮어쓰지 않음
+            boolean hasManualApproval = entity.getFinalBulkQc() != null || entity.getQcApprovedBy() != null || entity.getQcApprovedAt() != null;
+            if (bulkQcPassed && !hasManualApproval) {
+                List<Bulk_qc_Entity> inspections = bulk_qc_Repository.findByExecutionId(executionId);
+                boolean canAutoPass = !inspections.isEmpty();
+
+                // 이미 불합격 등으로 확정된 결과는 자동 변경하지 않음
+                for (Bulk_qc_Entity inspection : inspections) {
+                    String result = inspection.getOverall_qc_result();
+                    if (result != null && !result.isBlank() && !"합격".equals(result)) {
+                        canAutoPass = false;
+                        break;
+                    }
+                }
+                if (canAutoPass) {
+                    // 해당 실행의 검사 결과를 합격으로 저장
+                    for (Bulk_qc_Entity inspection : inspections) {
+                        inspection.setOverall_qc_result("합격");
+                    }
+                    // 공정 실행에도 자동 합격 여부 저장
+                    entity.setBulkQcAutoPassed(true);
+                }
+            }
         }
 
         // 발생 이력의 처리 상태로 다음 공정 진행 여부 확인
@@ -357,6 +388,73 @@ public class Process_execution_Service {
         return true;
     }
 
+    // 벌크 검사의 알람 처리가 끝났다면 종합결과를 합격으로 확정
+    // resume()의 트랜잭션 안에서 호출
+    private boolean completeHandledBulkQc(Process_execution_Entity execution) {
+        // 완료된 벌크 검사만 대상
+        if (!"벌크 검사".equals(execution.getProcess_code()) || !"완료".equals(execution.getStatus())) {return false;}
+        // 처음부터 정상으로 자동 합격한 경우는 기존 경로에서 처리
+        if (Boolean.TRUE.equals(execution.getBulkQcAutoPassed())) {return false;}
+        // 이미 사람이 승인한 결과는 기존 승인 조건으로 처리
+        if (execution.getFinalBulkQc() != null || execution.getQcApprovedBy() != null|| execution.getQcApprovedAt() != null) {return false;}
+        // 주의는 확인, 심각은 확인·조치 완료가 필요
+        if (!checkAlarmStatus(execution)) {return false;}
+        List<Anomaly_event_Entity> alarms = anomaly_event_Repository.findByExecutionId(execution.getExecution_id());
+
+        // 실제 자동 판정에서 발생한 알람이 있는지 확인
+        // 이력이 없다는 이유만으로 합격 처리하지 않음
+        boolean hasMeasurementAlarm = false;
+        for (Anomaly_event_Entity alarm : alarms) {
+            boolean numericItem = "ph_measured".equals(alarm.getSensorName())|| "viscosity_measured".equals(alarm.getSensorName());
+            boolean abnormal ="주의".equals(alarm.getSeverity())|| "심각".equals(alarm.getSeverity());
+            if ("자동판정".equals(alarm.getSourceType()) && numericItem && abnormal) {
+                hasMeasurementAlarm = true;
+                break;
+            }
+        }
+        if (!hasMeasurementAlarm) {return false;}
+        List<Bulk_qc_Entity> inspections = bulk_qc_Repository.findByExecutionId(execution.getExecution_id());
+        if (inspections.isEmpty()) {return false;}
+
+        // 먼저 모든 검사 기록의 진행 조건을 확인
+        for (Bulk_qc_Entity inspection : inspections) {
+            if (execution.getBatchesEntity() == null
+                    || inspection.getBatchesEntity() == null
+                    || !execution.getBatchesEntity().getBatchId().equals(
+                            inspection.getBatchesEntity().getBatchId())) {
+                return false;
+            }
+
+            String appearance = inspection.getAppearance_code();
+            String microbubble = inspection.getMicrobubble_code();
+            boolean appearancePassed =
+                    appearance != null
+                    && ("합격".equals(appearance.trim())
+                        || "적합".equals(appearance.trim()));
+            boolean microbubblePassed =
+                    microbubble != null
+                    && ("합격".equals(microbubble.trim())
+                        || "적합".equals(microbubble.trim()));
+            // 외관·미세기포 불합격이나 미입력은
+            // 수치 알람을 처리했더라도 자동으로 합격시키지 않음
+            if (!appearancePassed || !microbubblePassed) {
+                return false;
+            }
+            String result = inspection.getOverall_qc_result();
+            // 이미 불합격 등으로 확정된 결과는 덮어쓰지 않음
+            if (result != null
+                    && !result.isBlank()
+                    && !"합격".equals(result)) {
+                return false;
+            }
+        }
+        // 모든 조건을 확인한 뒤 종합결과 저장
+        for (Bulk_qc_Entity inspection : inspections) {inspection.setOverall_qc_result("합격");}
+        // bulkQcAutoPassed는 변경하지 않음:
+        // 처음부터 정상이었던 경우와 알람 처리 후 진행을 구분
+        return true;
+    }
+
     // 완료된 공정의 진행 조건을 재검사하고 다음 공정 시작
     @Transactional(isolation = Isolation.READ_COMMITTED)
     public Process_execution_Finish_Dto resume(Long executionId) {
@@ -395,10 +493,24 @@ public class Process_execution_Service {
                     .message("이미 생성된 다음 공정의 실행 정보를 반환합니다.")
                     .build();
         }
+
         // 7. 다음 공정명 및 알람 처리 여부 확인
         String nextProcessCode = getNextProcessCode(entity.getProcess_code());
         boolean alarmsHandled = checkAlarmStatus(entity);
-        String qcBlockReason = checkBulkQcStatus(entity);
+        // 벌크 검사에서 알람 처리 후 합격 확정이 가능한지 확인
+        boolean handledBulkQcPassed = false;
+        if ("벌크 검사".equals(entity.getProcess_code()) && alarmsHandled) {
+            handledBulkQcPassed = completeHandledBulkQc(entity);
+        }
+        // 알람 처리 후 합격으로 확정했다면 진행 허용
+        // 그 외에는 기존 자동 합격·수동 승인 조건 확인
+        String qcBlockReason;
+        if (handledBulkQcPassed) {
+            qcBlockReason = null;
+        } else {
+            qcBlockReason = checkBulkQcStatus(entity);
+        }
+
         Process_execution_Dto nextExecution = null;
         
         String nextProcessStatus;
@@ -552,32 +664,49 @@ public class Process_execution_Service {
     // null 반환: 진행 가능
     // 문자열 반환: 진행할 수 없는 이유
     private String checkBulkQcStatus(Process_execution_Entity execution) {
-        // 벌크 검사 이외의 공정에는 이 조건을 적용하지 않음
+        // 벌크 검사 이외의 공정에는 적용하지 않음
         if (!"벌크 검사".equals(execution.getProcess_code())) {return null;}
-        
-        Bulk_qc_Entity qc = execution.getFinalBulkQc();
-        // 최종 승인한 검사와 승인 정보 확인
-        if (qc == null || execution.getQcApprovedBy() == null || execution.getQcApprovedAt() == null) {
-            return "최종 검사 결과를 승인해 주세요.";
+        // 1. 자동 합격으로 확정된 경우
+        if (Boolean.TRUE.equals(execution.getBulkQcAutoPassed())) {
+            List<Bulk_qc_Entity> inspections = bulk_qc_Repository.findByExecutionId(execution.getExecution_id());
+            if (inspections.isEmpty()) {return "자동 합격에 사용된 검사 기록이 없습니다.";}
+            for (Bulk_qc_Entity inspection : inspections) {
+                // 현재 실행과 검사 기록의 LOT 일치 여부 확인
+                if (execution.getBatchesEntity() == null || inspection.getBatchesEntity() == null || !execution.getBatchesEntity().getBatchId().equals(inspection.getBatchesEntity().getBatchId())) {
+                    return "자동 합격 검사 기록의 LOT 번호를 확인해 주세요.";
+                }
+                // 자동 합격에 사용된 모든 검사 결과 확인
+                if (!"합격".equals(inspection.getOverall_qc_result())) {return "자동 합격 검사 기록의 종합결과를 확인해 주세요.";}
+            }
+            // 자동 합격이면 수동 승인 없이 진행 허용
+            return null;
         }
+
+        // 2. 자동 합격이 아닌 경우 기존 수동 승인 조건 확인
+        Bulk_qc_Entity qc = execution.getFinalBulkQc();
+        if (qc == null || execution.getQcApprovedBy() == null || execution.getQcApprovedAt() == null) {return "최종 검사 결과를 승인해 주세요.";}
+
         // 승인된 검사가 현재 공정 실행에 속하는지 확인
         if (qc.getProcess_execution_Entity() == null || !execution.getExecution_id().equals(qc.getProcess_execution_Entity().getExecution_id())) {
             return "최종 승인된 검사의 공정 실행번호를 확인해 주세요.";
         }
-        // 승인된 검사와 현재 공정의 LOT가 같은지 확인
-        if (execution.getBatchesEntity() == null
-                || qc.getBatchesEntity() == null
-                || !execution.getBatchesEntity().getBatchId().equals(
-                        qc.getBatchesEntity().getBatchId())) {
+
+        // 승인된 검사와 현재 공정의 LOT 일치 여부 확인
+        if (execution.getBatchesEntity() == null || qc.getBatchesEntity() == null || !execution.getBatchesEntity().getBatchId().equals(qc.getBatchesEntity().getBatchId())) {
             return "최종 승인된 검사의 LOT 번호를 확인해 주세요.";
         }
-        // 최종 승인된 한 건의 판정을 기준으로 판단
-        if ("합격".equals(qc.getOverall_qc_result())) {
-            return null;
+
+        // 종합결과가 합격이어도 외관·미세기포 결과를 함께 확인
+    if ("합격".equals(qc.getOverall_qc_result())) {
+        String appearance = qc.getAppearance_code();
+        String microbubble = qc.getMicrobubble_code();
+        boolean appearancePassed = appearance != null && ("합격".equals(appearance.trim()) || "적합".equals(appearance.trim()));
+        boolean microbubblePassed = microbubble != null && ("합격".equals(microbubble.trim()) || "적합".equals(microbubble.trim()));
+        if (!appearancePassed || !microbubblePassed) { return "외관·미세기포 검사 결과가 모두 합격이어야 " + "다음 공정을 진행할 수 있습니다.";
         }
-        if ("불합격".equals(qc.getOverall_qc_result())) {
-            return "최종 승인된 벌크 검사가 불합격입니다. 다음 공정을 진행할 수 없습니다.";
-        }
+        return null;
+    }
+        if ("불합격".equals(qc.getOverall_qc_result())) {return "최종 승인된 벌크 검사가 불합격입니다. "+ "다음 공정을 진행할 수 없습니다.";}
         return "최종 승인된 벌크 검사의 판정값을 확인해 주세요.";
     }
 

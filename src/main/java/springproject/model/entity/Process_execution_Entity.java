@@ -101,4 +101,9 @@ public class Process_execution_Entity extends BaseTime{
     // 최종 검사 승인시간
     @Column(name = "qc_approved_at")
     private LocalDateTime qcApprovedAt;
+
+    // 벌크 검사 전체 항목이 정상으로 판정되어 자동 합격했는지
+    @Column(name = "bulk_qc_auto_passed")
+    @Builder.Default
+    private Boolean bulkQcAutoPassed = false;
 }

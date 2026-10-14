@@ -189,25 +189,32 @@ public class Bulk_qc_Service {
         String batchId = bulk_qc_Repository.findBatchIdByQcId(qcId).orElse(null);
         if (batchId == null) {
             if (!bulk_qc_Repository.existsById(qcId)) {
-                throw new ResponseStatusException(HttpStatus.NOT_FOUND,"해당 검사 기록이 없습니다.");}
+                throw new ResponseStatusException(HttpStatus.NOT_FOUND,"해당 검사 기록이 없습니다.");
+            }
             throw new ResponseStatusException(HttpStatus.CONFLICT,"검사 기록에 연결된 LOT를 확인해 주세요.");
         }
+
         // 최종 승인 처리와 동일한 LOT 잠금 사용
         Batches_Entity batch = batches_Repository.findByIdForUpdate(batchId).orElse(null);
         if (batch == null) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND,"해당 LOT가 없습니다.");
         }
+
         // 잠금을 얻은 뒤 검사 기록 조회
         Bulk_qc_Entity entity = bulk_qc_Repository.findById(qcId).orElse(null);
         if (entity == null) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND,"해당 검사 기록이 없습니다.");
         }
-
         if (entity.getBatchesEntity() == null || !batchId.equals(entity.getBatchesEntity().getBatchId())) {
             throw new ResponseStatusException(HttpStatus.CONFLICT,"검사의 LOT 연결이 변경되었습니다. 다시 조회해 주세요.");
         }
 
-        // 승인 대상으로 지정된 기록은 수정·초기화 금지
+        // 추가: 자동 합격에 사용된 기록은 수정·초기화 금지
+        Process_execution_Entity execution = entity.getProcess_execution_Entity();
+        if (execution != null && Boolean.TRUE.equals(execution.getBulkQcAutoPassed())) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,"자동 합격에 사용된 검사 결과는 수정하거나 초기화할 수 없습니다.");
+        }
+        // 기존: 최종 승인 대상으로 지정된 기록은 수정·초기화 금지
         long approvedCount = process_execution_Repository.countByFinalQcId(qcId);
         if (approvedCount > 0) {
             throw new ResponseStatusException(HttpStatus.CONFLICT,"최종 승인된 검사 결과는 수정하거나 초기화할 수 없습니다.");
