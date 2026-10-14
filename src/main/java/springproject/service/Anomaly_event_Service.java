@@ -240,6 +240,49 @@ public class Anomaly_event_Service {
 
         String actionNote = request.getActionNote().strip();
 
+        // 조치 종류는 사전에 정의한 5가지 값만 허용
+        String actionType = request.getActionType();
+
+        if (actionType == null ||
+                !List.of(
+                    "PROCESS_ADJUST",
+                    "EQUIPMENT_CHECK",
+                    "REINSPECTION",
+                    "PRODUCTION_PAUSE",
+                    "OTHER"
+                ).contains(actionType)) {
+
+            throw new ResponseStatusException(
+                HttpStatus.BAD_REQUEST,
+                "올바른 조치 종류를 선택해 주세요."
+            );
+        }
+
+        // 기타(OTHER)를 선택한 경우에만 비고 입력을 필수로 검사
+        String actionRemarks = null;
+
+        if ("OTHER".equals(actionType)) {
+
+            if (request.getActionRemarks() == null ||
+                    request.getActionRemarks().isBlank()) {
+
+                throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "기타 조치의 비고를 입력해 주세요."
+                );
+            }
+
+            actionRemarks = request.getActionRemarks().strip();
+        }
+
+        //  조치 유형, 내용, 기타 비고를 하나의 문자열로 구성
+        String savedActionNote =
+                "[조치유형] " + actionType
+                + "\n[조치내용] " + actionNote
+                + (actionRemarks != null
+                        ? "\n[기타비고] " + actionRemarks
+                        : "");
+
         // 4. 사용자 조회
         Users_Entity user = users_Repository.findById(request.getUserId()).orElse(null);
         if (user == null) {
@@ -289,17 +332,27 @@ public class Anomaly_event_Service {
         }
         // 12. 이미 조치 완료된 경우
         if ("조치완료".equals(alarm.getActionStatus())) {
+
             // 같은 요청의 재전송이면 기존 결과 반환
             boolean sameUser = alarm.getUsers_Entity() != null
-                                  && request.getUserId().equals(
-                                       alarm.getUsers_Entity().getUserId());
+                    && request.getUserId().equals(
+                        alarm.getUsers_Entity().getUserId()
+                    );
 
-            boolean sameNote = actionNote.equals(alarm.getActionNote());
-            if (sameUser && sameNote) {return Anomaly_event_Dto.from(alarm);}
+            // 저장된 조치내역과 현재 요청의 조치내역 비교
+            boolean sameNote = savedActionNote.equals(alarm.getActionNote());
+
+            // 같은 담당자가 동일한 조치내역을 다시 전송했다면 기존 결과 반환
+            if (sameUser && sameNote) {
+                return Anomaly_event_Dto.from(alarm);
+            }
+
             // 기존 조치 기록을 새 요청으로 덮어쓰지 않음
             throw new ResponseStatusException(
-                    HttpStatus.CONFLICT,"이미 조치 완료된 알람입니다. 기존 조치내역을 확인해 주세요.");
-        }
+                HttpStatus.CONFLICT,
+                "이미 조치 완료된 알람입니다. 기존 조치내역을 확인해 주세요."
+            );
+}
 
         // 13. 확인을 먼저 완료한 심각 알림만 조치 완료 가능
         String actionStatus = alarm.getActionStatus();
@@ -307,13 +360,18 @@ public class Anomaly_event_Service {
             throw new ResponseStatusException(HttpStatus.CONFLICT,"심각 알람을 먼저 확인한 뒤 조치 완료해 주세요.");
         }
 
-        // 14. 조치 결과 저장
-        alarm.setActionNote(actionNote);
+        // 15. 기존 action_note 컬럼에 조치내역 저장
+        alarm.setActionNote(savedActionNote);
+
+        // 16. 조치 상태, 담당자, 처리시간 저장
         alarm.setActionStatus("조치완료");
         alarm.setUsers_Entity(user);
         alarm.setActionTime(LocalDateTime.now());
 
+        // 17. 변경된 알람 정보 저장
         Anomaly_event_Entity saved = anomaly_event_Repository.save(alarm);
+
+        // 18. 저장된 결과를 DTO로 변환하여 반환
         return Anomaly_event_Dto.from(saved);
     }
 
