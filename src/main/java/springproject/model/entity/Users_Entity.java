@@ -14,17 +14,22 @@ import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
-import lombok.Data;
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
 import lombok.ToString;
 
 @Entity
 @Table(name = "users")
-@Data
+@Getter
+@Setter
+@ToString(callSuper = true)
+@EqualsAndHashCode(callSuper = true) // 상속받은 BaseTime의 필드까지 equals/hashCode에 포함
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class Users_Entity extends BaseTime{
+public class Users_Entity extends BaseTime {
     // 사용자번호
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
