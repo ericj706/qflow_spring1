@@ -30,8 +30,8 @@ public class Anomaly_event_Dto {
         private LocalDateTime occurredAt;
         private LocalDateTime resolvedAt;
         private Integer durationSec;
-        private String actionStatus;
-        private String actionNote;
+        private String actionStatus;     // 알림 처리 진행 상태
+        private String actionNote;       // 실제 수행한 조치내용
         private Integer userId;
         private LocalDateTime actionTime;
         private String sourceType;
