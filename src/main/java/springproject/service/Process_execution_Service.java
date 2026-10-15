@@ -319,7 +319,7 @@ public class Process_execution_Service {
             nextProcessStatus = "제품 폐기 대기";
             message = "불합격 제품의 폐기 확정이 필요합니다. " + "4·5공정 관리자가 제품별 폐기를 확정해 주세요.";
         } else if (finalPackaging) {
-            nextProcessStatus = "LOT 완료";
+            nextProcessStatus = "완료";
             message = "최종 포장 검사와 LOT 생산이 완료되었습니다.";
         } else {
             nextProcessStatus = "마지막 공정 종료";
@@ -560,7 +560,7 @@ public class Process_execution_Service {
                 lotCompleted = completeBatch(batch, entity, packagingSummary);
             }
             if(lotCompleted){
-                nextProcessStatus = "LOT 완료";
+                nextProcessStatus = "완료";
                 message = "최종 포장 검사와 LOT 생산이 완료되었습디ㅏ."; 
             }else{
                 nextProcessStatus = "제품 폐기 대기";
@@ -996,7 +996,7 @@ public class Process_execution_Service {
             return Process_execution_Finish_Dto.builder()
             .finishedExecution(Process_execution_Dto.from(execution))
                     .nextExecution(null)
-                    .nextProcessStatus("LOT 폐기")
+                    .nextProcessStatus("폐기")
                     .message("이미 폐기 처리된 LOT입니다.")
                     .build();
         }
@@ -1041,7 +1041,7 @@ public class Process_execution_Service {
         return Process_execution_Finish_Dto.builder()
                 .finishedExecution(Process_execution_Dto.from(execution))
                 .nextExecution(null)
-                .nextProcessStatus("LOT 폐기")
+                .nextProcessStatus("폐기")
                 .message("벌크 검사 불합격 LOT의 폐기가 확정되었습니다.")
                 .build();
     }
