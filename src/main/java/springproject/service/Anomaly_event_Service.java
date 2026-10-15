@@ -1,55 +1,38 @@
 package springproject.service;
 
 import java.time.LocalDate;
-
 import java.time.LocalDateTime;
-
 import java.util.ArrayList;
-
 import java.util.List;
 
 import java.util.Optional;
 import jakarta.servlet.http.HttpSession;
+import springproject.model.dto.Completed_action_notification_Dto;
 
 import org.springframework.data.domain.Page;
-
 import org.springframework.data.domain.PageRequest;
-
 import org.springframework.data.domain.Pageable;
-
 import org.springframework.http.HttpStatus;
-
 import org.springframework.stereotype.Service;
-
 import org.springframework.transaction.annotation.Transactional;
-
 import org.springframework.web.server.ResponseStatusException;
 
 import lombok.RequiredArgsConstructor;
 
 import springproject.model.dto.Anomaly_event_Dto;
-
 import springproject.model.dto.request.Anomaly_event_Action_Dto;
-
 import springproject.model.dto.request.Anomaly_event_Confirm_Dto;
-
 import springproject.model.dto.search.Anomaly_event_SearchDto;
-
 import springproject.model.entity.Anomaly_event_Entity;
-
 import springproject.model.entity.Batches_Entity;
-
 import springproject.model.entity.Process_execution_Entity;
-
 import springproject.model.entity.Users_Entity;
-
 import springproject.model.repository.Anomaly_event_Repository;
-
 import springproject.model.repository.Batches_Repository;
-
 import springproject.model.repository.Process_execution_Repository;
-
 import springproject.model.repository.Users_Repository;
+import springproject.model.entity.Completed_action_notification_Entity;
+import springproject.model.repository.Completed_action_notification_Repository;
 
 @Service @RequiredArgsConstructor 
 
@@ -58,23 +41,26 @@ import springproject.model.repository.Users_Repository;
 public class Anomaly_event_Service {
 
     private final Anomaly_event_Repository anomaly_event_Repository;
+    private final Completed_action_notification_Repository completed_action_notification_Repository;
 
     // 전체조회 + 조건검색 + 페이징
-
     public Page<Anomaly_event_Dto> search(
-
             Anomaly_event_SearchDto searchDto,
+            int page,
+            HttpSession session) {
 
-            int page) {
+    // 로그인한 관리자 확인
+    Users_Entity loginUser = requireLoginManager(session);
+
+    // 최고관리자인지 확인
+    boolean isSuperAdmin =
+            "최고관리자".equals(loginUser.getRole());
 
         // 페이지 번호 확인
-
         if (page < 0) {
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST,"페이지 번호는 0 이상이어야 합니다.");
-
         }
-
         // 검색조건 꺼내기
         LocalDate startDate = searchDto.getStartDate();
         LocalDate endDate = searchDto.getEndDate();
@@ -139,7 +125,26 @@ public class Anomaly_event_Service {
         if (processCode != null) {
             processCode = processCode.trim();
             if (processCode.isEmpty()) {processCode = null;}
+        }
+        // 최고관리자: 전체 공정 조회 가능
+        // 공정관리자: 본인 담당 공정만 조회 가능
+        if (!isSuperAdmin) {
 
+            String managerProcessCode =
+                    processCodeForRole(loginUser.getRole());
+
+            // 다른 공정을 검색하려는 경우 차단
+            if (processCode != null &&
+                    !processCode.equals(managerProcessCode)) {
+
+                throw new ResponseStatusException(
+                        HttpStatus.FORBIDDEN,
+                        "담당 공정의 이상내역만 조회할 수 있습니다."
+                );
+            }
+
+            // 검색조건과 관계없이 담당 공정으로 제한
+            processCode = managerProcessCode;
         }
 
         // 이상 유형
@@ -237,29 +242,164 @@ public class Anomaly_event_Service {
         }
     }
 
-    // 팝업에 표시할 알림: 최고관리자는 전체, 공정관리자는 담당 공정만
-    public List<Anomaly_event_Dto> findActivePopupAnomalies(HttpSession session) {
+    // 이상 발생 팝업: 공정관리자는 담당 공정만, 최고관리자는 표시하지 않음
+    public List<Anomaly_event_Dto> findActivePopupAnomalies(
+            HttpSession session) {
+
         Users_Entity loginUser = requireLoginManager(session);
-        boolean isSuperAdmin = "최고관리자".equals(loginUser.getRole());
-        String processCode = isSuperAdmin ? null : processCodeForRole(loginUser.getRole());
-        return anomaly_event_Repository.findActivePopupAnomalies(isSuperAdmin, processCode)
-                .stream().map(Anomaly_event_Dto::from).toList();
+
+        // 최고관리자는 이상 발생 팝업을 받지 않음
+        if ("최고관리자".equals(loginUser.getRole())) {
+            return List.of();
+        }
+
+        // 공정관리자는 담당 공정만 조회
+        String processCode = processCodeForRole(loginUser.getRole());
+
+        return anomaly_event_Repository
+                .findActivePopupAnomalies(false, processCode)
+                .stream()
+                .map(Anomaly_event_Dto::from)
+                .toList();
+    }
+
+    // 최고관리자 조치완료 알림 조회
+    @Transactional(readOnly = true)
+    public List<Completed_action_notification_Dto> findCompletedActionNotifications(
+            HttpSession session) {
+
+        Users_Entity loginUser = requireLoginManager(session);
+
+        if (!"최고관리자".equals(loginUser.getRole())) {
+            throw new ResponseStatusException(
+                    HttpStatus.FORBIDDEN,
+                    "최고관리자만 조치완료 알림을 조회할 수 있습니다."
+            );
+        }
+
+        return completed_action_notification_Repository
+                .findByRecipientUser_UserIdAndIsReadFalseOrderByCreatedAtAsc(
+                        loginUser.getUserId()
+                )
+                .stream()
+                .map(notification -> new Completed_action_notification_Dto(
+                        notification.getNotificationId(),
+                        Anomaly_event_Dto.from(notification.getAnomalyEvent())
+                ))
+                .toList();
+    }
+
+    // 최고관리자 조치완료 알림 읽음 처리
+    @Transactional
+    public void markCompletedNotificationAsRead(
+            Long notificationId, HttpSession session) {
+
+        Users_Entity loginUser = requireLoginManager(session);
+
+        // 최고관리자만 읽음 처리 가능
+        if (!"최고관리자".equals(loginUser.getRole())) {
+            throw new ResponseStatusException(
+                    HttpStatus.FORBIDDEN,
+                    "최고관리자만 알림을 읽음 처리할 수 있습니다."
+            );
+        }
+
+        // 알림 조회
+        Completed_action_notification_Entity notification =
+                completed_action_notification_Repository
+                        .findById(notificationId)
+                        .orElseThrow(() -> new ResponseStatusException(
+                                HttpStatus.NOT_FOUND,
+                                "해당 알림을 찾을 수 없습니다."
+                        ));
+
+        // 본인에게 온 알림인지 확인
+        if (!loginUser.getUserId().equals(
+                notification.getRecipientUser().getUserId())) {
+            throw new ResponseStatusException(
+                    HttpStatus.FORBIDDEN,
+                    "본인에게 온 알림만 읽음 처리할 수 있습니다."
+            );
+        }
+
+        // 읽음 처리
+        if (!Boolean.TRUE.equals(notification.getIsRead())) {
+            notification.setIsRead(true);
+            notification.setReadAt(LocalDateTime.now());
+        }
+    }
+
+    // 조치완료 시 최고관리자 알림 생성
+    private void createCompletedActionNotifications(
+            Anomaly_event_Entity anomaly) {
+
+        // 활성화된 최고관리자 목록 조회
+        List<Users_Entity> superAdmins = users_Repository.findAll()
+                .stream()
+                .filter(user ->
+                        "최고관리자".equals(user.getRole())
+                        && Boolean.TRUE.equals(user.getIsActive()))
+                .toList();
+
+        for (Users_Entity admin : superAdmins) {
+
+            // 동일 알림 중복 생성 방지
+            boolean exists = completed_action_notification_Repository
+                    .existsByAnomalyEvent_AnomalyIdAndRecipientUser_UserId(
+                            anomaly.getAnomalyId(),
+                            admin.getUserId()
+                    );
+
+            if (exists) {
+                continue;
+            }
+
+            Completed_action_notification_Entity notification =
+                    Completed_action_notification_Entity.builder()
+                            .anomalyEvent(anomaly)
+                            .recipientUser(admin)
+                            .isRead(false)
+                            .build();
+
+            completed_action_notification_Repository.save(notification);
+        }
     }
 
     // 1) 개별조회
+    public Anomaly_event_Dto findOne(
+            Long anomaly_id,
+            HttpSession session) {
 
-    public Anomaly_event_Dto findOne( Long anomaly_id){
+        // 1. 로그인한 관리자 확인
+        Users_Entity loginUser = requireLoginManager(session);
 
-        Optional<Anomaly_event_Entity> optional = anomaly_event_Repository.findById(anomaly_id);
+        // 2. 알람번호로 데이터 조회
+        Anomaly_event_Entity entity = anomaly_event_Repository
+                .findById(anomaly_id)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND,
+                        "해당 이상 알람을 찾을 수 없습니다."
+                ));
 
-        if (optional.isPresent()) {
+        // 3. 최고관리자는 모든 공정 조회 가능
+        boolean isSuperAdmin =
+                "최고관리자".equals(loginUser.getRole());
 
-            Anomaly_event_Entity entity = optional.get();
+        // 4. 공정관리자는 담당 공정만 조회 가능
+        if (!isSuperAdmin) {
 
-            return Anomaly_event_Dto.from(entity);
+            String managerProcessCode =
+                    processCodeForRole(loginUser.getRole());
 
-        }return null;
-
+            if (!managerProcessCode.equals(entity.getProcessCode())) {
+                throw new ResponseStatusException(
+                        HttpStatus.FORBIDDEN,
+                        "담당 공정의 이상 알람만 조회할 수 있습니다."
+                );
+            }
+        }
+        // 5. Entity → DTO 변환
+        return Anomaly_event_Dto.from(entity);
     }
 
     private final Process_execution_Repository process_execution_Repository;
@@ -307,18 +447,23 @@ public class Anomaly_event_Service {
     public Anomaly_event_Dto confirm(Long anomalyId, Anomaly_event_Confirm_Dto request, HttpSession session) {
         Users_Entity loginUser = requireLoginManager(session);
 
-        // 1. 알람번호 확인
+        // 최고관리자는 이상 알림 확인 처리 불가
+        if ("최고관리자".equals(loginUser.getRole())) {
+            throw new ResponseStatusException(
+                    HttpStatus.FORBIDDEN,
+                    "이상 알림 확인은 담당 공정관리자만 할 수 있습니다."
+            );
+        }
 
+        // 1. 알람번호 확인
         if (anomalyId == null || anomalyId <= 0) {throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"올바른 알람번호를 입력해 주세요.");}
 
         // 2. 사용자번호 확인
-
         if (request == null || request.getUserId() == null || request.getUserId() <= 0) {
 
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"확인한 사용자 번호를 입력해 주세요.");}
 
         // 3. 사용자 조회
-
         Users_Entity user = users_Repository.findById(request.getUserId()).orElse(null);
 
         if (user == null) {throw new ResponseStatusException(HttpStatus.NOT_FOUND,"해당 사용자가 없습니다.");}
@@ -398,11 +543,18 @@ public class Anomaly_event_Service {
     // 심각 알람 조치 완료 처리
 
     @Transactional
-
     public Anomaly_event_Dto completeAction(
 
             Long anomalyId, Anomaly_event_Action_Dto request, HttpSession session) {
         Users_Entity loginUser = requireLoginManager(session);
+
+        // 최고관리자는 조치하지 않고 처리 내역만 조회
+        if ("최고관리자".equals(loginUser.getRole())) {
+            throw new ResponseStatusException(
+                HttpStatus.FORBIDDEN,
+                "조치 완료는 담당 공정관리자만 할 수 있습니다."
+            );
+        }
 
         // 1. 알람번호 확인
 
@@ -659,13 +811,13 @@ public class Anomaly_event_Service {
         alarm.setActionTime(LocalDateTime.now());
 
         // 17. 변경된 알람 정보 저장
-
         Anomaly_event_Entity saved = anomaly_event_Repository.save(alarm);
 
-        // 18. 저장된 결과를 DTO로 변환하여 반환
+        // 18. 최고관리자에게 조치완료 알림 생성
+        createCompletedActionNotifications(saved);
 
+        // 19. 저장된 결과를 DTO로 변환하여 반환
         return Anomaly_event_Dto.from(saved);
-
     }
 
     // 수동 입력된 조치 담당자는 활성 관리자여야 한다.

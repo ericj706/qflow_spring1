@@ -55,7 +55,8 @@ public class Users_Service {
         session.setAttribute("LOGIN_USER_ID", user.getUserId());
         session.setAttribute("LOGIN_USER_NAME", user.getUserName());
         session.setAttribute("LOGIN_USER_ROLE", user.getRole()); // "최고관리자" 또는 "1~5공정관리자"
-
+        System.out.println("로그인 세션 ID: " + session.getId());
+        System.out.println("로그인 사용자 ID: " + session.getAttribute("LOGIN_USER_ID"));
         // 5. 민감정보가 제외된 기존 Users_Dto 반환
         return Users_Dto.from(user);
     }
