@@ -251,7 +251,6 @@ public class Bulk_qc_Service {
         decimal(dto.getSpecific_gravity(), 8, 4);
         text(dto.getAppearance_code(), 50);
         text(dto.getMicrobubble_code(), 50);
-        text(dto.getMicrobial_cfu(), 30);
         text(dto.getQc_notes_code(), 100);
         text(dto.getRecord_source(), 20);
         return Bulk_qc_Dto.from(bulk_qc_Repository.save(dto.toEntity(execution.getBatchesEntity(), worker(dto.getUserId()), execution)));
