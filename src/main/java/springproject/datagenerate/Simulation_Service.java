@@ -35,7 +35,7 @@ public class Simulation_Service {
     private long lotDelayMs;
     @Value("${simulation.sensor-ticks:10}")
     private int sensorTicks;
-    @Value("${simulation.packaging-units:10}")
+    @Value("${simulation.packaging-units:100}")
     private int packagingUnits;
     @Value("${simulation.user-id:1}")
     private int userId;
@@ -254,6 +254,9 @@ public class Simulation_Service {
         result.put("sensorTicks", Math.max(2, sensorTicks));
         result.put("packagingUnits", Math.max(1, packagingUnits));
         result.put("inspectionFailureRate", generator.inspectionFailureRate());
+        result.put("packagingAnomalyRate", generator.inspectionFailureRate());
+        result.put("bulkWarningRate", generator.bulkWarningRate());
+        result.put("bulkFailureRate", generator.bulkFailureRate());
         return result;
     }
 

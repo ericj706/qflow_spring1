@@ -23,7 +23,6 @@ public class Bulk_qc_Dto {
     private BigDecimal specific_gravity;
     private String appearance_code;
     private String microbubble_code;
-    private String microbial_cfu;
     private String overall_qc_result;
     private String qc_notes_code;
     private String record_source;
@@ -50,7 +49,6 @@ public class Bulk_qc_Dto {
                 .specific_gravity(this.specific_gravity)                
                 .appearance_code(this.appearance_code)
                 .microbubble_code(this.microbubble_code)
-                .microbial_cfu(this.microbial_cfu)
                 .overall_qc_result(this.overall_qc_result)
                 .qc_notes_code(this.qc_notes_code)
                 .record_source(this.record_source)
@@ -73,7 +71,6 @@ public class Bulk_qc_Dto {
                 .specific_gravity(entity.getSpecific_gravity())
                 .appearance_code(entity.getAppearance_code())
                 .microbubble_code(entity.getMicrobubble_code())
-                .microbial_cfu(entity.getMicrobial_cfu())
                 .overall_qc_result(entity.getOverall_qc_result())
                 .qc_notes_code(entity.getQc_notes_code())
                 .record_source(entity.getRecord_source())
