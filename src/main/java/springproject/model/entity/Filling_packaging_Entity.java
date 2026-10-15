@@ -129,5 +129,23 @@ public class Filling_packaging_Entity extends BaseTime{
     @Builder.Default
     private List<Anomaly_event_Entity> anomalyEventList = new ArrayList<>();
 
+    // 제품별 폐기 상태
+    // null: 폐기 대상 아님 또는 판정 전
+    // 폐기대기: 불합격 제품의 폐기 확정 대기
+    // 폐기완료: 관리자가 폐기를 확정함
+    @Column(name = "disposal_status", length = 20)
+    private String disposalStatus;
+
+    // 제품 폐기를 확정한 관리자
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "disposed_by_user_id")
+    @ToString.Exclude
+    @lombok.EqualsAndHashCode.Exclude
+    private Users_Entity disposedByUser;
+
+    // 제품 폐기 확정 시간
+    @Column(name = "disposed_at", columnDefinition = "DATETIME(3)")
+    private LocalDateTime disposedAt;
+
     
 }

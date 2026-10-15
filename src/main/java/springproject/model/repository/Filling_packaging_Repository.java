@@ -218,4 +218,12 @@ public interface Filling_packaging_Repository extends JpaRepository<Filling_pack
             """)
     List<Filling_packaging_Entity> findByExecutionId(@Param("executionId") Long executionId);
 
+    // 공정 실행번호별 제품 목록 — 20개씩 페이지 조회
+    @Query("""
+            SELECT f
+            FROM Filling_packaging_Entity f
+            WHERE f.process_execution_Entity.execution_id = :executionId
+            """)
+    Page<Filling_packaging_Entity> findPageByExecutionId(@Param("executionId") Long executionId,Pageable pageable);
+
 }

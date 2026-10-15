@@ -16,7 +16,10 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.server.ResponseStatusException;
 
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
 import springproject.model.dto.Filling_packaging_Dto;
 import springproject.model.dto.chart.Chart_Dto;
@@ -86,6 +89,32 @@ public class Filling_packaging_Controller {
             @PathVariable(name = "pouch_id") String pouchId,
             @RequestBody Filling_packaging_Result_Dto request) {
         return filling_packaging_Service.updateResult(pouchId, request);
+    }
+
+    // 로그인한 4·5공정 관리자의 제품별 폐기 확정
+    @PatchMapping("/{pouch_id}/discard")
+    public Filling_packaging_Dto discardProduct(
+            @PathVariable(name = "pouch_id") String pouchId,
+            HttpServletRequest request) {
+        // 기존 로그인 세션 조회
+        HttpSession session = request.getSession(false);
+        Object sessionUserId = session == null ? null : session.getAttribute("LOGIN_USER_ID");
+        if (!(sessionUserId instanceof Integer)) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED,"로그인 후 제품 폐기를 진행해 주세요.");
+        }
+        Integer loginUserId = (Integer) sessionUserId;
+
+        // 서비스에서 권한·제품 판정·공정 상태를 확인한 뒤 폐기 확정
+        return filling_packaging_Service.discardProduct(pouchId,loginUserId);
+    }
+    
+    // 공정 실행번호별 제품 목록
+    @GetMapping("/executions/{executionId}")
+    public Page_response<Filling_packaging_Dto> findByExecutionId(
+            @PathVariable(name = "executionId") Long executionId,
+            @RequestParam(name = "page", defaultValue = "0") int page) {
+        Page<Filling_packaging_Dto> result = filling_packaging_Service.findByExecutionId(executionId,page);
+        return Page_response.from(result, Map.of());
     }
 
 }

@@ -41,6 +41,11 @@ public class Filling_packaging_Dto {
     private LocalDateTime updatedAt;
     // 공정 실행번호
     private Long executionId;
+    // 제품 폐기 정보
+    private String disposalStatus;
+    private Integer disposedByUserId;
+    private String disposedByUserName;
+    private LocalDateTime disposedAt;
 
     // DTO → Entity
     public Filling_packaging_Entity toEntity(
@@ -82,12 +87,8 @@ public class Filling_packaging_Dto {
 
         return Filling_packaging_Dto.builder()
                 .pouch_id(entity.getPouch_id())
-                .batchId(
-                        entity.getBatchesEntity() == null
-                                ? null : entity.getBatchesEntity().getBatchId())
-                .userId(
-                        entity.getUsersEntity() == null
-                                ? null : entity.getUsersEntity().getUserId())
+                .batchId(entity.getBatchesEntity() == null ? null : entity.getBatchesEntity().getBatchId())
+                .userId(entity.getUsersEntity() == null ? null : entity.getUsersEntity().getUserId())
                 .packaging_line(entity.getPackaging_line())
                 .timestamp(entity.getTimestamp())
                 .sheet_material_code(entity.getSheet_material_code())
@@ -106,6 +107,10 @@ public class Filling_packaging_Dto {
                 .metal_detector_status(entity.getMetal_detector_status())
                 .vision_inspection_status(entity.getVision_inspection_status())
                 .final_disposition(entity.getFinal_disposition())
+                .disposalStatus(entity.getDisposalStatus())
+                .disposedByUserId(entity.getDisposedByUser() == null ? null : entity.getDisposedByUser().getUserId())
+                .disposedByUserName(entity.getDisposedByUser() == null ? null : entity.getDisposedByUser().getUserName())
+                .disposedAt(entity.getDisposedAt())
                 .note(entity.getNote())
                 .record_source(entity.getRecord_source())
                 .createdAt(entity.getCreatedAt())

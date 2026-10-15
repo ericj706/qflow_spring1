@@ -7,6 +7,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.springframework.data.domain.Sort;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -430,4 +431,122 @@ public class Filling_packaging_Service {
         Filling_packaging_Entity saved = filling_packaging_Repository.save(entity);
         return Filling_packaging_Dto.from(saved);
     }
+
+    // 불합격 제품 한 건의 폐기 확정
+    // loginUserId는 Controller에서 로그인 세션으로 확인하여 전달
+    @Transactional(isolation = Isolation.READ_COMMITTED)
+    public Filling_packaging_Dto discardProduct(String pouchId,Integer loginUserId) {
+        // 1. 로그인 확인
+        if (loginUserId == null) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED,"로그인 후 폐기를 진행해 주세요.");
+        }
+        // 2. 활성 사용자 및 관리자 권한 확인
+        Users_Entity user = users_Repository.findById(loginUserId).orElse(null);
+        if (user == null || !Boolean.TRUE.equals(user.getIsActive())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN,"활성 사용자만 폐기를 확정할 수 있습니다.");
+        }
+
+        String role = user.getRole();
+        if (!"4공정관리자".equals(role) && !"5공정관리자".equals(role)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN,"4공정관리자 또는 5공정관리자만 폐기를 확정할 수 있습니다.");
+        }
+        // 3. 제품번호 확인
+        if (pouchId == null || pouchId.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"제품번호를 입력해 주세요.");
+        }
+        pouchId = pouchId.trim();
+
+        // 4. 제품에 연결된 실행번호와 LOT 번호 조회
+        Long executionId = filling_packaging_Repository.findExecutionIdByPouchId(pouchId).orElse(null);
+        if (executionId == null) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND,"제품이 없거나 공정 실행이 연결되지 않았습니다.");
+        }
+        String batchId = process_execution_Repository.findBatchIdByExecutionId(executionId).orElse(null);
+        if (batchId == null) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND,"공정 실행 기록 또는 연결된 LOT가 없습니다.");
+        }
+
+        // 5. 기존 처리와 같은 순서로 잠금: LOT → 공정 실행 → 제품
+        Batches_Entity batch = batches_Repository.findByIdForUpdate(batchId).orElse(null);
+        if (batch == null) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND,"해당 LOT가 없습니다.");
+        }
+        Process_execution_Entity execution = process_execution_Repository.findByIdForUpdate(executionId).orElse(null);
+        if (execution == null) {
+            throw new ResponseStatusException( HttpStatus.NOT_FOUND,"해당 공정 실행이 없습니다.");
+        }
+        Filling_packaging_Entity product = filling_packaging_Repository.findByIdForUpdate(pouchId).orElse(null);
+        if (product == null) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND,"해당 제품이 없습니다.");
+        }
+
+        // 6. 잠금 이후 LOT·공정·제품 연결 재확인
+        if (execution.getBatchesEntity() == null || !batchId.equals(execution.getBatchesEntity().getBatchId())) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,"공정 실행의 LOT 연결을 확인해 주세요.");
+        }
+        if (product.getBatchesEntity() == null || !batchId.equals(product.getBatchesEntity().getBatchId())
+                || product.getProcess_execution_Entity() == null
+                || !executionId.equals(product.getProcess_execution_Entity().getExecution_id())) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,"제품의 LOT 또는 공정 실행 연결이 변경되었습니다.");
+        }
+        // 7. 최종 포장 검사에서 불합격한 제품만 대상
+        if (!"최종 포장 검사".equals(execution.getProcess_code())) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,"최종 포장 검사 제품만 폐기할 수 있습니다.");
+        }
+        if (!"불합격".equals(product.getFinal_disposition())) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,"종합결과가 불합격인 제품만 폐기할 수 있습니다.");
+        }
+
+        // 8. 이미 폐기 확정된 제품은 최초 처리자·시간을 유지
+        // LOT 완료 후 동일 요청이 다시 와도 기존 결과 반환
+        if ("폐기완료".equals(product.getDisposalStatus())) {return Filling_packaging_Dto.from(product);}
+
+        // 9. 공정 판정이 끝나고 LOT 완료를 기다리는 상태에서만 확정
+        if (!"진행중".equals(batch.getStatus())) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,"진행중 상태의 LOT에서만 제품 폐기를 확정할 수 있습니다.");
+        }
+        if (!"완료".equals(execution.getStatus())) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,"최종 포장 공정을 종료하고 판정을 확인한 후 폐기해 주세요."
+            );
+        }
+
+        // 기존 미설정 기록도 불합격 판정과 공정 상태를 확인하여 처리
+        String disposalStatus = product.getDisposalStatus();
+        if (disposalStatus != null && !disposalStatus.isBlank() && !"폐기대기".equals(disposalStatus)) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,"확인할 수 없는 제품 폐기 상태입니다.");
+        }
+
+        // 10. 제품별 폐기 상태·처리자·시간 저장
+        product.setDisposalStatus("폐기완료");
+        product.setDisposedByUser(user);
+        product.setDisposedAt(LocalDateTime.now());
+
+        // final_disposition은 불합격 유지
+        // 기존 제품 담당자, 측정값, 검사 결과, 알람 이력도 유지
+        // 트랜잭션 종료 시 변경 내용 저장
+        return Filling_packaging_Dto.from(product);
+    }
+
+    // 현재 공정 실행의 제품 목록 조회
+    @Transactional(readOnly = true)
+    public Page<Filling_packaging_Dto> findByExecutionId(
+            Long executionId,
+            int page) {
+        if (executionId == null || executionId <= 0) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"올바른 공정 실행번호를 입력해 주세요.");
+        }
+        if (page < 0) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"페이지 번호는 0 이상이어야 합니다.");
+        }
+        Pageable pageable = PageRequest.of(
+                page,
+                20,
+                Sort.by(Sort.Order.desc("timestamp"),Sort.Order.asc("pouch_id"))
+        );
+
+        return filling_packaging_Repository
+                .findPageByExecutionId(executionId, pageable)
+                .map(Filling_packaging_Dto::from);
+}
+
 }

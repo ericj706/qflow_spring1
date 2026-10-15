@@ -757,16 +757,21 @@ public class Measurement_check_Service {
                 anomaly_event_Repository.save(event);
             }
 
-            // 6. 제품별 종합결과 저장
+            // 6. 제품별 종합결과 및 폐기 상태 저장
             if (inspectionFailed || alreadyFailed) {
                 // 개별 검사 불합격 또는 기존 불합격 유지
                 product.setFinal_disposition("불합격");
+                // 불합격 판정 직후 폐기 대기로 표시
+                // 이미 폐기 완료된 기록의 처리자·시간은 유지
+                if (!"폐기완료".equals(product.getDisposalStatus())) {
+                    product.setDisposalStatus("폐기대기");
+                }
             } else if (hasAbnormalMeasurement) {
-                // 개별 검사는 합격이지만 수치 알람 처리가 필요함
-                // resume()에서 확인·조치 완료 후 합격으로 확정
+                // 개별 검사는 합격이지만 수치 알람 처리가 필요한 상태
+                // 주의 확인 또는 심각 확인·조치 후 합격으로 확정
                 product.setFinal_disposition(null);
             } else {
-                // 개별 검사와 수치 판정 모두 정상
+                // 개별 검사와 수치 판정이 모두 정상
                 product.setFinal_disposition("합격");
             }
         }
