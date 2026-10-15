@@ -54,6 +54,41 @@ public interface Anomaly_event_Repository extends JpaRepository<Anomaly_event_En
             Pageable pageable
     );
 
+    // 목록과 동일한 조건으로 검색 결과 전체의 조치상태별 건수를 집계한다.
+    @Query("""
+            SELECT a.actionStatus, COUNT(a)
+            FROM Anomaly_event_Entity a
+            LEFT JOIN a.batches_Entity b
+            LEFT JOIN a.users_Entity u
+            WHERE (:startAt IS NULL OR a.occurredAt >= :startAt)
+              AND (:endAtExclusive IS NULL OR a.occurredAt < :endAtExclusive)
+              AND (:severity IS NULL OR a.severity = :severity)
+              AND (:actionStatus IS NULL OR a.actionStatus = :actionStatus)
+              AND (:sourceType IS NULL OR a.sourceType = :sourceType)
+              AND (:batchId IS NULL OR b.batchId = :batchId)
+              AND (
+                    :batchIdKeyword IS NULL
+                    OR LOWER(b.batchId)
+                        LIKE CONCAT('%', LOWER(:batchIdKeyword), '%')
+                  )
+              AND (:processCode IS NULL OR a.processCode = :processCode)
+              AND (:anomalyType IS NULL OR a.anomalyType = :anomalyType)
+              AND (:userId IS NULL OR u.userId = :userId)
+            GROUP BY a.actionStatus
+            """)
+    List<Object[]> summarize(
+            @Param("startAt") LocalDateTime startAt,
+            @Param("endAtExclusive") LocalDateTime endAtExclusive,
+            @Param("severity") String severity,
+            @Param("actionStatus") String actionStatus,
+            @Param("sourceType") String sourceType,
+            @Param("batchId") String batchId,
+            @Param("batchIdKeyword") String batchIdKeyword,
+            @Param("processCode") String processCode,
+            @Param("anomalyType") String anomalyType,
+            @Param("userId") Integer userId
+    );
+
     // 해당 공정 실행에서 발생한 알람 조회
     @Query("""
              SELECT a 

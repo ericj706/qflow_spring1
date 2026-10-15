@@ -66,8 +66,8 @@ public class Process_execution_Controller {
 
     // 공정 시작시 저장
     @PostMapping("")
-    public Process_execution_Dto save(@RequestBody Process_execution_Start_Dto request) {
-        // Service의 트랜잭션 커밋이 성공한 뒤 생성기에 실행 정보를 연결한다.
+    public Process_execution_Dto save(
+        @RequestBody Process_execution_Start_Dto request) {
         Process_execution_Dto result = ps.save(request);
         simulationService.connectStartedProcess(result);
         return result;

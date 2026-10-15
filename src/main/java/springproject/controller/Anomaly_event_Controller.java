@@ -38,10 +38,7 @@ public class Anomaly_event_Controller {
         @RequestParam(name = "page", defaultValue = "0") int page,
         HttpSession session) {
 
-    Page<Anomaly_event_Dto> result =
-            anomaly_event_Service.search(searchDto, page, session);
-
-    return Page_response.from(result, Map.of());
+    return anomaly_event_Service.search(searchDto, page, session);
 }
     // 2. 팝업 전용 조회: 세션을 Service에 전달해 로그인/담당 공정을 검사
     @GetMapping(value = "/popup", produces = "application/json")
