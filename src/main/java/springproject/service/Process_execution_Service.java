@@ -996,7 +996,7 @@ public class Process_execution_Service {
             return Process_execution_Finish_Dto.builder()
             .finishedExecution(Process_execution_Dto.from(execution))
                     .nextExecution(null)
-                    .nextProcessStatus("LOT 폐기")
+                    .nextProcessStatus("폐기")
                     .message("이미 폐기 처리된 LOT입니다.")
                     .build();
         }
