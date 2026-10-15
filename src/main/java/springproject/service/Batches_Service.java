@@ -5,8 +5,10 @@ import java.util.List;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
 
 import lombok.RequiredArgsConstructor;
 import springproject.model.dto.Batches_Dto;
@@ -118,6 +120,12 @@ public class Batches_Service {
     // ==========================================
     @Transactional
     public Batches_Dto save(Batches_Dto dto) {
+        if (dto == null) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"등록할 내용을 입력해 주세요.");
+        }
+        if (dto.getStatus() != null && "폐기".equals(dto.getStatus().trim())) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"폐기 상태로 LOT를 등록할 수 없습니다.");
+        }
 
     // 1. 동일한 LOT 번호가 이미 존재하는지 확인
        if (br.existsById(dto.getBatchId())) {
@@ -152,46 +160,49 @@ public class Batches_Service {
    // ==========================================
    @Transactional
    public Batches_Dto update(String batchId, Batches_Dto dto) {
+        if(dto== null){
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"수정할 내용을 입력해 주세요.");
+        }
+        // 폐기 처리와 동시에 수정되지 않도록 같은 LOT 잠금 사용
+        Batches_Entity entity = br.findByIdForUpdate(batchId).orElse(null);
+        if (entity == null) {
+                throw new ResponseStatusException(HttpStatus.NOT_FOUND,"존재하지 않는 LOT입니다.");
+        }
 
-      // 1. 수정할 LOT 조회
-      Batches_Entity entity = br.findById(batchId)
-              .orElseThrow(
-                      () -> new IllegalArgumentException(
-                            "존재하지 않는 배치 ID입니다."
-                      )
-              );
+        // 이미 폐끼된 LOT 담당자 / 상태를 포함한 정보 변경 금지
+        if("폐기".equals(entity.getStatus())){
+                throw new ResponseStatusException(HttpStatus.CONFLICT,"페기된 LOT는 수정할 수 없습니다.");
+        }
+        // 일반 수정 기능으로 폐기 처리하는 것은 금지
+        if(dto.getStatus() != null && "폐기".equals(dto.getStatus().trim())){
+                throw new ResponseStatusException(HttpStatus.CONFLICT, "LOT 폐기는 확정 기능 이용해 주세요.");
+        }
+        // 담당자 조회
+        Users_Entity users_Entity = null;
+        if(dto.getUserId() != null){
+                users_Entity = ur.findById(dto.getUserId()).orElse(null);
+                if(users_Entity == null){
+                        throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "존재하지 않는 담당자 입니다.");}
+        }
+        // 기존 LOT 정보 수정
+        entity.setProductCode(dto.getProductCode());
+        entity.setProductName(dto.getProductName());
+        entity.setTargetBulkKg(dto.getTargetBulkKg());
+        entity.setActualBulkKg(dto.getActualBulkKg());
+        entity.setTargetUnits(dto.getTargetUnits());
+        entity.setActualUnits(dto.getActualUnits());
+        entity.setDefectUnits(dto.getDefectUnits());
+        entity.setStartTime(dto.getStartTime());
+        entity.setEndTime(dto.getEndTime());
+        entity.setStatus(dto.getStatus());
+        entity.setUsersEntity(users_Entity);
+        entity.setTankId(dto.getTankId());
+        entity.setRecordSource(dto.getRecordSource());
 
-      // 2. 담당자 처리
-      Users_Entity usersEntity = null;
+        return Batches_Dto.from(br.save(entity));
 
-      if (dto.getUserId() != null) {
-          usersEntity = ur.findById(dto.getUserId())
-                  .orElseThrow(
-                        () -> new IllegalArgumentException(
-                                "존재하지 않는 담당자입니다."
-                        )
-                );
-      }
 
-      // 3. LOT 정보 수정
-      entity.setProductCode(dto.getProductCode());
-      entity.setProductName(dto.getProductName());
-      entity.setTargetBulkKg(dto.getTargetBulkKg());
-      entity.setActualBulkKg(dto.getActualBulkKg());
-      entity.setTargetUnits(dto.getTargetUnits());
-      entity.setActualUnits(dto.getActualUnits());
-      entity.setDefectUnits(dto.getDefectUnits());
-      entity.setStartTime(dto.getStartTime());
-      entity.setEndTime(dto.getEndTime());
-      entity.setStatus(dto.getStatus());
-      entity.setUsersEntity(usersEntity);
-      entity.setTankId(dto.getTankId());
-      entity.setRecordSource(dto.getRecordSource());
-
-      // 4. 저장
-      Batches_Entity updatedEntity = br.save(entity);
-
-      // 5. DTO로 반환
-      return Batches_Dto.from(updatedEntity);
   }
+
+
 }

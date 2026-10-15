@@ -199,6 +199,11 @@ public class Bulk_qc_Service {
         if (batch == null) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND,"해당 LOT가 없습니다.");
         }
+        // 폐기된 LOT의 검사 결과는 수정·초기화 금지
+        if ("폐기".equals(batch.getStatus())) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,"폐기된 LOT의 검사 결과는 수정하거나 초기화할 수 없습니다.");
+        }
+
         // 잠금을 얻은 뒤 검사 기록 조회
         Bulk_qc_Entity entity = bulk_qc_Repository.findById(qcId).orElse(null);
         if (entity == null) {

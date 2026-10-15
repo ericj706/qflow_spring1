@@ -3,9 +3,14 @@ package springproject.controller;
 import java.util.Map;
 
 import org.springframework.data.domain.Page;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.server.ResponseStatusException;
+
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpSession;
+
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
@@ -94,6 +99,22 @@ public class Process_execution_Controller {
             @PathVariable(name = "execution_id") Long executionId,
             @RequestBody Process_execution_QcApproval_Dto request) {
         return ps.approveBulkQc(executionId, request);
+    }
+
+    // 로그인한 4·5공정관리자의 벌크 불합격 LOT 폐기 확정
+    @PatchMapping("/{execution_id}/discard")
+    public Process_execution_Finish_Dto discardBulkQc(
+            @PathVariable(name = "execution_id") Long executionId,
+            HttpServletRequest request) {
+        // 기존 세션만 조회 — 로그인하지 않은 사용자에게 새 세션 생성하지 않음
+        HttpSession session = request.getSession(false);
+        Object sessionUserId =
+                session == null ? null : session.getAttribute("LOGIN_USER_ID");
+        if (!(sessionUserId instanceof Integer)) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED,"로그인 후 폐기를 진행해 주세요.");
+        }
+        Integer loginUserId = (Integer) sessionUserId;
+        return ps.discardBulkQc(executionId, loginUserId);
     }
     
 }
