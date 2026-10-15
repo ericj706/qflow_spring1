@@ -21,7 +21,6 @@ Controller는 기존 `controller` 패키지에서 `datagenerate.Simulation_Servi
 실제 데이터를 만들거나 DB를 저장하는 클래스는 아니며 `Simulation_Service`를 주기적으로 호출합니다.
 
 | 메서드 | 기능 |
-|---|---|
 | `generateRealtimeData()` | `@Scheduled`에서 `simulationService.tick()`을 호출합니다. 기본 간격은 1초입니다. |
 
 `fixedDelay`는 이전 호출이 끝난 뒤 설정 시간만큼 기다립니다. 따라서 REST 저장에 2초가 걸리면
@@ -36,7 +35,6 @@ Controller는 기존 `controller` 패키지에서 `datagenerate.Simulation_Servi
 다음 공정으로 진행할 수 있는지는 기존 공정 Service의 응답을 따릅니다.
 
 | 메서드 | 기능 |
-|---|---|
 | 생성자 | REST 클라이언트와 난수 생성기를 주입받습니다. |
 | `ready()` | `ApplicationReadyEvent` 이후 주기 실행이 가능하도록 표시합니다. |
 | `tick()` | 자동 실행 진입점입니다. 비활성·서버 준비 전이면 반환하고, 오류가 나면 생성기를 정지하고 `lastError`를 기록합니다. |
