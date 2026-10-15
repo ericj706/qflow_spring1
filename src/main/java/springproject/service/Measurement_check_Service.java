@@ -647,7 +647,7 @@ public class Measurement_check_Service {
         );
     }
 
-    // 최종 포장 공정의 수치 판정 및 이상 발생 이력 저장
+    // 최종 포장 공정의 수치 판정·이상 이력 저장·제품별 종합결과 처리
     // finish()의 트랜잭션과 LOT·공정 잠금 안에서 호출
     @Transactional(propagation = Propagation.MANDATORY)
     public void checkPackagingExecution(Process_execution_Entity execution) {
@@ -665,20 +665,58 @@ public class Measurement_check_Service {
             throw new ResponseStatusException(HttpStatus.CONFLICT,"저장된 포장 기록이 없어 공정을 종료할 수 없습니다.");
         }
         for (Filling_packaging_Entity product : products) {
+            // 1. LOT 연결 확인
             if (product.getBatchesEntity() == null || !execution.getBatchesEntity().getBatchId().equals(product.getBatchesEntity().getBatchId())) {
                 throw new ResponseStatusException(HttpStatus.CONFLICT,"포장 기록의 LOT 연결이 올바르지 않습니다.");
+            }
+
+            // 2. 공정 실행 연결 확인
+            if (product.getProcess_execution_Entity() == null || !execution.getExecution_id().equals(product.getProcess_execution_Entity().getExecution_id())) {
+                throw new ResponseStatusException(HttpStatus.CONFLICT,"포장 기록의 공정 실행 연결이 올바르지 않습니다.");
             }
             if (product.getTimestamp() == null) {
                 throw new ResponseStatusException(HttpStatus.CONFLICT,"측정시간이 없는 포장 기록은 판정할 수 없습니다.");
             }
 
+            // 3. 생성기가 저장한 개별 검사 결과 확인
+            // 각각 호출하여 세 항목 모두 입력값을 검증
+            boolean weightPassed = checkPackagingInspection(
+                    product.getCheckweigher_status(),
+                    product.getPouch_id(),
+                    "중량검사"
+            );
+
+            boolean metalPassed = checkPackagingInspection(
+                    product.getMetal_detector_status(),
+                    product.getPouch_id(),
+                    "금속검출"
+            );
+
+            boolean visionPassed = checkPackagingInspection(
+                    product.getVision_inspection_status(),
+                    product.getPouch_id(),
+                    "비전검사"
+            );
+            boolean inspectionFailed = !weightPassed || !metalPassed || !visionPassed;
+
+            // 기존에 확정된 불합격은 자동으로 합격으로 바꾸지 않음
+            boolean alreadyFailed = "불합격".equals(product.getFinal_disposition());
+
+            // 4. 중량·실링온도 수치 판정
             List<Measurement_result_Dto> results = checkPackagingMeasurements(product);
+
+            boolean hasAbnormalMeasurement = false;
+
             for (Measurement_result_Dto result : results) {
                 String severity = result.getSeverity();
                 if ("정상".equals(severity)) {continue;}
+
                 if (!"주의".equals(severity) && !"심각".equals(severity)) {
                     throw new ResponseStatusException(HttpStatus.CONFLICT,"확인할 수 없는 판정 결과입니다.");
                 }
+                hasAbnormalMeasurement = true;
+
+                // 5. 수치 주의·심각 발생 이력 저장
                 Anomaly_rule_Entity rule = anomaly_rule_Repository.findById(result.getRuleId()).orElse(null);
                 if (rule == null) {
                     throw new ResponseStatusException(HttpStatus.CONFLICT,"판정에 사용한 규칙이 없습니다.");
@@ -690,6 +728,7 @@ public class Measurement_check_Service {
                         + result.getMeasuredValue().toPlainString()
                         + result.getUnit()
                         + ", 판정: " + severity;
+
                 if ("upper_seal_temp_c".equals(result.getSensorName()) || "lower_seal_temp_c".equals(result.getSensorName())) {
                     message +=
                             ", 상부 실링온도: "
@@ -717,7 +756,33 @@ public class Measurement_check_Service {
                                 .build();
                 anomaly_event_Repository.save(event);
             }
+
+            // 6. 제품별 종합결과 저장
+            if (inspectionFailed || alreadyFailed) {
+                // 개별 검사 불합격 또는 기존 불합격 유지
+                product.setFinal_disposition("불합격");
+            } else if (hasAbnormalMeasurement) {
+                // 개별 검사는 합격이지만 수치 알람 처리가 필요함
+                // resume()에서 확인·조치 완료 후 합격으로 확정
+                product.setFinal_disposition(null);
+            } else {
+                // 개별 검사와 수치 판정 모두 정상
+                product.setFinal_disposition("합격");
+            }
         }
+    }
+
+    // 개별 검사 결과 확인
+    // 합격/적합: true / 불합격/부적합: false
+    // 미입력 또는 알 수 없는 값: 입력 오류
+    private boolean checkPackagingInspection(String value, String pouchId, String itemName){
+        if(value == null || value.isBlank()){
+            throw new ResponseStatusException(HttpStatus.CONFLICT,"제품"+pouchId+"의"+itemName+"결과가 입력되지 안았습니다");
+        }
+        String result = value.trim();
+        if("합격".equals(result) || "적합".equals(result)){return  true;}
+        if("불합격".equals(result) || "부적합".equals(result)){return  false;}
+        throw new ResponseStatusException(HttpStatus.CONFLICT, "제품"+pouchId+"의"+itemName+"결과를 확인해 주세요: " +result);       
     }
 
 
