@@ -26,6 +26,9 @@ public class Process_execution_Dto {
     private String record_source;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+    // 공정 담당관리자
+    private Integer managerUserId;
+    private String managerUserName;
 
     // 최종 승인된 벌크 검사번호
     private String finalQcId;
@@ -35,6 +38,8 @@ public class Process_execution_Dto {
     private Integer qcApprovedByUserId;
     // 승인시간
     private LocalDateTime qcApprovedAt;
+    // 벌크 검사 자동 합격 여부
+    private Boolean bulkQcAutoPassed;
 
     // DTO → Entity
     public Process_execution_Entity toEntity(Batches_Entity batchesEntity) {
@@ -66,6 +71,10 @@ public class Process_execution_Dto {
                 .finalQcResult(entity.getFinalBulkQc() == null ? null : entity.getFinalBulkQc().getOverall_qc_result())
                 .qcApprovedByUserId(entity.getQcApprovedBy() == null ? null : entity.getQcApprovedBy().getUserId())
                 .qcApprovedAt(entity.getQcApprovedAt())
+                .bulkQcAutoPassed(Boolean.TRUE.equals(entity.getBulkQcAutoPassed()))
+                // 공정에 배정된 담당관리자 정보
+                .managerUserId(entity.getManagerUser() == null ? null: entity.getManagerUser().getUserId())
+                .managerUserName(entity.getManagerUser() == null ? null: entity.getManagerUser().getUserName())
                 .build();
     }
 

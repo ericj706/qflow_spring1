@@ -8,6 +8,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -16,9 +17,11 @@ import springproject.model.dto.Material_dispensing_Dto;
 import springproject.model.dto.search.Material_dispensing_SearchDto;
 import springproject.model.entity.Batches_Entity;
 import springproject.model.entity.Material_dispensing_Entity;
+import springproject.model.entity.Process_execution_Entity;
 import springproject.model.entity.Users_Entity;
 import springproject.model.repository.Batches_Repository;
 import springproject.model.repository.Material_dispensing_Repository;
+import springproject.model.repository.Process_execution_Repository;
 import springproject.model.repository.Users_Repository;
 
 
@@ -208,100 +211,119 @@ public class Material_dispensing_Service {
         return material_dispensing_Repository.findById(dispenseId)
                 .map(Material_dispensing_Dto::from)
                 .orElseThrow(
-                        () -> new IllegalArgumentException(
-                                "존재하지 않는 ID"
-                        )
+                        () -> new ResponseStatusException(HttpStatus.NOT_FOUND, "존재하지 않는 ID")
                 );
     }
-
-    // ==========================================
+    private final Process_execution_Repository process_execution_Repository;
     // 원료 칭량 등록
-    // ==========================================
-    @Transactional
-    public Material_dispensing_Dto save(Material_dispensing_Dto dto) {
+        @Transactional(isolation = Isolation.READ_COMMITTED)
+        public Material_dispensing_Dto save(Material_dispensing_Dto dto) {
+        // 1. 필수 입력값 확인
+        if (dto == null) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "저장할 칭량 정보가 없습니다.");
+        }
+        if (dto.getDispenseId() == null || dto.getDispenseId().isBlank() || dto.getDispenseId().length() > 100) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "칭량번호는 1~100자로 입력해 주세요.");
+        }
+        if (dto.getBatchId() == null || dto.getBatchId().isBlank()) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "LOT 번호가 필요합니다.");
+        }
+        Long executionId = dto.getExecutionId();
+        if (executionId == null || executionId <= 0) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "올바른 공정 실행번호가 필요합니다.");
+        }
+        if (dto.getTargetQtyKg() == null || dto.getTargetQtyKg().signum() <= 0 || dto.getActualQtyKg() == null || dto.getActualQtyKg().signum() < 0) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"목표량은 0보다 커야 하고 실제량은 0 이상이어야 합니다.");
+        }
+        if (dto.getDispensedAt() == null) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "칭량시간이 필요합니다.");
+        }
+        // 2. 해당 실행에 연결된 LOT 번호 조회
+        String batchId = process_execution_Repository.findBatchIdByExecutionId(executionId).orElse(null);
+        if (batchId == null) {
+                throw new ResponseStatusException(HttpStatus.NOT_FOUND, "해당 공정 실행 기록이 없습니다.");
+        }
+        if (!batchId.equals(dto.getBatchId())) {
+                throw new ResponseStatusException(HttpStatus.CONFLICT,"입력한 LOT와 공정 실행에 연결된 LOT가 다릅니다.");
+        }
+        // 3. 공정 종료 처리와 같은 순서로 LOT → 공정 실행 잠금
+        Batches_Entity batchesEntity = br.findByIdForUpdate(batchId).orElse(null);
+        if (batchesEntity == null) {
+                throw new ResponseStatusException(HttpStatus.NOT_FOUND, "해당 LOT가 없습니다.");
+        }
+        Process_execution_Entity execution = process_execution_Repository.findByIdForUpdate(executionId).orElse(null);
+        if (execution == null) {
+                throw new ResponseStatusException(HttpStatus.NOT_FOUND, "해당 공정 실행 기록이 없습니다.");
+        }
+        // 4. 연결된 LOT와 공정 종류 확인
+        if (execution.getBatchesEntity() == null || !batchId.equals(
+                        execution.getBatchesEntity().getBatchId())) {
+                throw new ResponseStatusException(HttpStatus.CONFLICT, "공정 실행의 LOT 연결을 확인해 주세요.");
+        }
 
-        // 칭량번호 중복 확인
+        if (!"원료 칭량".equals(execution.getProcess_code())) {
+                throw new ResponseStatusException(HttpStatus.CONFLICT,"원료 칭량 공정에만 칭량 기록을 저장할 수 있습니다.");
+        }
+        // 5. 진행 중인 LOT와 공정에만 저장 허용
+        if (!"진행중".equals(batchesEntity.getStatus()) || !"진행중".equals(execution.getStatus())) {
+                throw new ResponseStatusException(HttpStatus.CONFLICT,"진행 중인 LOT와 공정에만 칭량 기록을 저장할 수 있습니다.");
+        }
+        // 6. 칭량번호 중복 확인
         if (material_dispensing_Repository.existsById(dto.getDispenseId())) {
-            throw new IllegalArgumentException(
-                    "이미 존재하는 칭량 ID입니다."
-            );
+                throw new ResponseStatusException(HttpStatus.CONFLICT, "이미 저장된 칭량번호입니다.");
         }
-
-        // 생산 LOT 조회
-        Batches_Entity batchesEntity =
-                br.findById(dto.getBatchId())
-                        .orElseThrow(
-                                () -> new IllegalArgumentException(
-                                        "존재하지 않는 생산 LOT입니다."
-                                )
-                        );
-
-        // 담당자 조회
+        // 7. 칭량 기록의 담당자 조회
+        // 공정 담당관리자는 execution.managerUser에 별도로 저장되어 있음
         Users_Entity usersEntity = null;
-
         if (dto.getUserId() != null) {
-            usersEntity =
-                    ur.findById(dto.getUserId())
-                            .orElseThrow(
-                                    () -> new IllegalArgumentException(
-                                            "존재하지 않는 담당자입니다."
-                                    )
-                            );
+                usersEntity = ur.findById(dto.getUserId()).orElse(null);
+                if (usersEntity == null) {
+                        throw new ResponseStatusException(HttpStatus.NOT_FOUND, "해당 담당자가 없습니다.");}
         }
 
-        // DTO → Entity
-        Material_dispensing_Entity entity =
-                dto.toEntity(batchesEntity, usersEntity);
+        // 8. LOT·담당자·공정 실행을 연결해 저장
+        Material_dispensing_Entity entity = dto.toEntity(batchesEntity, usersEntity, execution);
+        Material_dispensing_Entity saved = material_dispensing_Repository.save(entity);
+        return Material_dispensing_Dto.from(saved);
+        }
 
-        // DB 저장
-        Material_dispensing_Entity savedEntity =
-                material_dispensing_Repository.save(entity);
-
-        // Entity → DTO
-        return Material_dispensing_Dto.from(savedEntity);
-    }
-
-    // ==========================================
     // 원료 칭량 수정
-    // ==========================================
-    @Transactional
-    public Material_dispensing_Dto update(
-            String dispenseId,
-            Material_dispensing_Dto dto) {
+        @Transactional(isolation = Isolation.READ_COMMITTED)
+        public Material_dispensing_Dto update(String dispenseId,Material_dispensing_Dto dto) {
+        if (dto == null) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "수정할 칭량 정보가 없습니다.");
+        }
+        Material_dispensing_Entity entity = findEditableMaterial(dispenseId);
 
-        // 1. 수정할 원료 칭량 데이터 조회
-        Material_dispensing_Entity entity =
-                material_dispensing_Repository.findById(dispenseId)
-                        .orElseThrow(
-                                () -> new IllegalArgumentException(
-                                        "존재하지 않는 칭량 ID입니다."
-                                )
-                        );
-
-        // 2. 생산 LOT 조회
-        Batches_Entity batchesEntity =
-                br.findById(dto.getBatchId())
-                        .orElseThrow(
-                                () -> new IllegalArgumentException(
-                                        "존재하지 않는 생산 LOT입니다."
-                                )
-                        );
-
-        // 3. 담당자 조회
-        Users_Entity usersEntity = null;
-
-        if (dto.getUserId() != null) {
-            usersEntity =
-                    ur.findById(dto.getUserId())
-                            .orElseThrow(
-                                    () -> new IllegalArgumentException(
-                                            "존재하지 않는 담당자입니다."
-                                    )
-                            );
+        // 요청에 LOT·실행번호가 있으면 기존 연결과 일치하는지 확인
+        if (dto.getBatchId() != null && !dto.getBatchId().equals(entity.getBatchesEntity().getBatchId())) {
+                throw new ResponseStatusException(HttpStatus.CONFLICT, "칭량 기록의 LOT는 변경할 수 없습니다.");
+        }
+        if (dto.getExecutionId() != null && !dto.getExecutionId().equals(entity.getProcessExecutionEntity().getExecution_id())) {
+                throw new ResponseStatusException(HttpStatus.CONFLICT,"칭량 기록의 공정 실행번호는 변경할 수 없습니다.");
+        }
+        if (dto.getTargetQtyKg() == null
+                || dto.getTargetQtyKg().signum() <= 0
+                || dto.getActualQtyKg() == null
+                || dto.getActualQtyKg().signum() < 0) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"목표량은 0보다 커야 하고 실제량은 0 이상이어야 합니다.");
+        }
+        if (dto.getDispensedAt() == null) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "칭량시간이 필요합니다.");
+        }
+        if ("삭제".equals(dto.getStatus())) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "삭제는 삭제 기능을 이용해 주세요.");
         }
 
-        // 4. 기존 데이터 수정
-        entity.setBatchesEntity(batchesEntity);
+        Users_Entity usersEntity = null;
+        if (dto.getUserId() != null) {
+                usersEntity = ur.findById(dto.getUserId()).orElse(null);
+                if (usersEntity == null) {
+                        throw new ResponseStatusException(HttpStatus.NOT_FOUND, "해당 담당자가 없습니다.");
+                }
+        }
+
+        // LOT·공정 실행 연결은 유지
         entity.setMaterialCode(dto.getMaterialCode());
         entity.setMaterialName(dto.getMaterialName());
         entity.setRawMaterialLot(dto.getRawMaterialLot());
@@ -311,37 +333,56 @@ public class Material_dispensing_Service {
         entity.setDispensedAt(dto.getDispensedAt());
         entity.setStatus(dto.getStatus());
 
-        // 5. DB 저장
-        Material_dispensing_Entity updatedEntity =
-                material_dispensing_Repository.save(entity);
+        return Material_dispensing_Dto.from(material_dispensing_Repository.save(entity));
+        }
 
-        return Material_dispensing_Dto.from(updatedEntity);
-    }
-
-    // 원료 칭량 논리적 삭제 
-        @Transactional
+        // 원료 칭량 논리적 삭제
+        @Transactional(isolation = Isolation.READ_COMMITTED)
         public void delete(String dispenseId) {
+                Material_dispensing_Entity entity = findEditableMaterial(dispenseId);
+                entity.setStatus("삭제");
+                material_dispensing_Repository.save(entity);
+        }
 
-        // 1. 삭제할 원료 칭량 데이터 조회
-        Material_dispensing_Entity entity =
-                material_dispensing_Repository.findById(dispenseId)
-                        .orElseThrow(
-                                () -> new IllegalArgumentException(
-                                        "존재하지 않는 칭량 ID입니다."
-                                )
-                        );
-
-        // 2. 이미 삭제된 데이터인지 확인
+        // 수정·삭제할 수 있는 원료 칭량 기록 조회
+        // 반드시 트랜잭션 안에서 호출
+        private Material_dispensing_Entity findEditableMaterial(String dispenseId) {
+        if (dispenseId == null || dispenseId.isBlank()) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "칭량번호가 필요합니다.");
+        }
+        // 엔티티를 읽기 전에 연결된 LOT 번호부터 조회
+        String batchId = material_dispensing_Repository.findBatchIdByDispenseId(dispenseId).orElse(null);
+        if (batchId == null) {
+                throw new ResponseStatusException(HttpStatus.NOT_FOUND,"칭량 기록 또는 연결된 LOT가 없습니다.");
+        }
+        // 저장·공정 종료와 같은 LOT를 잠금
+        Batches_Entity batch = br.findByIdForUpdate(batchId).orElse(null);
+        if (batch == null) {
+                throw new ResponseStatusException(HttpStatus.NOT_FOUND, "해당 LOT가 없습니다.");
+        }
+        Material_dispensing_Entity entity = material_dispensing_Repository.findById(dispenseId).orElse(null);
+        if (entity == null) {
+                throw new ResponseStatusException(HttpStatus.NOT_FOUND, "해당 칭량 기록이 없습니다.");
+        }
+        if (entity.getBatchesEntity() == null || !batchId.equals(entity.getBatchesEntity().getBatchId())) {
+                throw new ResponseStatusException(HttpStatus.CONFLICT, "칭량 기록의 LOT 연결을 확인해 주세요.");
+        }
+        if (entity.getProcessExecutionEntity() == null) {
+                throw new ResponseStatusException(HttpStatus.CONFLICT,"공정 실행이 연결되지 않은 기존 기록은 수정·삭제할 수 없습니다.");
+        }
+        Long executionId = entity.getProcessExecutionEntity().getExecution_id();
+        Process_execution_Entity execution = process_execution_Repository.findByIdForUpdate(executionId).orElse(null);
+        if (execution == null || execution.getBatchesEntity() == null || !batchId.equals(execution.getBatchesEntity().getBatchId()) || !"원료 칭량".equals(execution.getProcess_code())) {
+                throw new ResponseStatusException(HttpStatus.CONFLICT,"칭량 기록의 공정 실행 연결을 확인해 주세요.");
+        }
+        if (!"진행중".equals(batch.getStatus())|| !"진행중".equals(execution.getStatus())) {
+                throw new ResponseStatusException(HttpStatus.CONFLICT,"진행 중인 원료 칭량 공정의 기록만 수정·삭제할 수 있습니다.");
+        }
         if ("삭제".equals(entity.getStatus())) {
-                throw new IllegalStateException(
-                        "이미 삭제된 원료 칭량 데이터입니다."
-                );
+                throw new ResponseStatusException(HttpStatus.CONFLICT, "이미 삭제된 칭량 기록입니다.");
+        }
+        return entity;
         }
 
-        // 3. 실제 삭제하지 않고 상태만 변경
-        entity.setStatus("삭제");
 
-        // 4. DB에 변경된 상태 저장
-        material_dispensing_Repository.save(entity);
-        }
 }

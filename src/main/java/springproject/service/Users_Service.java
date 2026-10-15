@@ -34,9 +34,12 @@ public class Users_Service {
     //로그인
     @Transactional(readOnly = true)
     public Users_Dto login(Integer userId, String password, jakarta.servlet.http.HttpSession session) {
-        // 1. 이름으로 유저 조회
+        if (userId == null || userId <= 0 || password == null || password.isEmpty()) {
+            throw new IllegalArgumentException("사원 번호와 비밀번호를 입력해 주세요.");
+        }
+        // 1. React가 전달하는 사원 번호로 사용자 조회
         Users_Entity user = ur.findById(userId)
-                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 사용자입니다."));
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 사원 번호입니다."));
 
         // 2. 계정 활성화 여부 확인 (isActive가 true/1 인지)
         if (user.getIsActive() == null || !user.getIsActive()) {
@@ -44,14 +47,14 @@ public class Users_Service {
         }
 
         // 3. 비밀번호 검증 (DB의 passwordHash와 비교)
-        if (!user.getPasswordHash().equals(password)) {
+        if (user.getPasswordHash() == null || !user.getPasswordHash().equals(password)) {
             throw new IllegalArgumentException("비밀번호가 일치하지 않습니다.");
         }
 
         // 4. 세션에 로그인 정보 저장
         session.setAttribute("LOGIN_USER_ID", user.getUserId());
         session.setAttribute("LOGIN_USER_NAME", user.getUserName());
-        session.setAttribute("LOGIN_USER_ROLE", user.getRole()); // "전체관리자" 또는 "공정관리자"
+        session.setAttribute("LOGIN_USER_ROLE", user.getRole()); // "최고관리자" 또는 "1~5공정관리자"
 
         // 5. 민감정보가 제외된 기존 Users_Dto 반환
         return Users_Dto.from(user);

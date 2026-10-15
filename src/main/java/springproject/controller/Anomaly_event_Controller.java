@@ -35,12 +35,17 @@ public class Anomaly_event_Controller {
             Page<Anomaly_event_Dto> result  = anomaly_event_Service.search(searchDto, page);
             return  Page_response.from(result, Map.of());
         }
+    // 이상 알림 팝업 전용 조회
+    @GetMapping(value = "/popup", produces = "application/json")
+    public List<Anomaly_event_Dto> getPopupAnomalies() {
+        return anomaly_event_Service.findActivePopupAnomalies();
+    }
 
     // 1) 개별조회
-    @GetMapping ("/{anomaly_id}")
-    public Anomaly_event_Dto findOne(@PathVariable (name = "anomaly_id") Long anomaly_id){
-        return anomaly_event_Service.findOne(anomaly_id);
-    }
+        @GetMapping ("/{anomaly_id}")
+        public Anomaly_event_Dto findOne(@PathVariable (name = "anomaly_id") Long anomaly_id){
+            return anomaly_event_Service.findOne(anomaly_id);
+        }
 
     // 공정 실행별 알람 조회
     @GetMapping("/executions/{executionId}")

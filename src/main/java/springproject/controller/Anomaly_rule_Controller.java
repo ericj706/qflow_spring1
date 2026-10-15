@@ -42,13 +42,13 @@ public class Anomaly_rule_Controller {
     public Anomaly_rule_Dto saveNewRule(@RequestBody Anomaly_rule_Dto dto){
         return anomaly_rule_Service.saveNewRule(dto);
     }
-    
+    // 4) 이상규칙 수정
     @PutMapping("/{ruleId}")
     public Anomaly_rule_Dto update(@PathVariable("ruleId") Integer ruleId, @RequestBody Anomaly_rule_Dto dto) {
         return anomaly_rule_Service.update(ruleId, dto);
     }
 
-    // 4) 사용여부 수정
+    // 5) 사용여부 수정
     @PutMapping ("/{ruleId}/change")
     public Anomaly_rule_Dto activeChange(@PathVariable ("ruleId") Integer ruleId){
         return anomaly_rule_Service.activeChange(ruleId);

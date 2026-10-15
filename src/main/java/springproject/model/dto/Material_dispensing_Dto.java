@@ -9,30 +9,37 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import springproject.model.entity.Batches_Entity;
 import springproject.model.entity.Material_dispensing_Entity;
+import springproject.model.entity.Process_execution_Entity;
 import springproject.model.entity.Users_Entity;
 
 @NoArgsConstructor @AllArgsConstructor @Builder @Data 
 public class Material_dispensing_Dto {
-    private String dispenseId;
-    private String batchId;
-    private String materialCode;
-    private String materialName;
-    private String rawMaterialLot;
-    private BigDecimal targetQtyKg;
-    private BigDecimal actualQtyKg;
-    private Integer userId;
-    private LocalDateTime dispensedAt;
-    private String status;
-    private LocalDateTime createdAt;
-    private LocalDateTime updatedAt;
+        private String dispenseId;
+        private String batchId;
+        private String materialCode;
+        private String materialName;
+        private String rawMaterialLot;
+        private BigDecimal targetQtyKg;
+        private BigDecimal actualQtyKg;
+        private Integer userId;
+        private LocalDateTime dispensedAt;
+        private String status;
+        private LocalDateTime createdAt;
+        private LocalDateTime updatedAt;
+        // 공정 실행번호
+        private Long executionId;
 
-    // DTO → Entity
-    public Material_dispensing_Entity toEntity(
-            Batches_Entity batchesEntity,
-            Users_Entity usersEntity) {
-        return Material_dispensing_Entity.builder()
+        // DTO → Entity
+        // DTO → Entity
+                public Material_dispensing_Entity toEntity(
+                        Batches_Entity batchesEntity,
+                        Users_Entity usersEntity,
+                        Process_execution_Entity processExecutionEntity) {
+
+                return Material_dispensing_Entity.builder()
                 .dispenseId(this.dispenseId)
                 .batchesEntity(batchesEntity)
+                .processExecutionEntity(processExecutionEntity)
                 .materialCode(this.materialCode)
                 .materialName(this.materialName)
                 .rawMaterialLot(this.rawMaterialLot)
@@ -42,30 +49,26 @@ public class Material_dispensing_Dto {
                 .dispensedAt(this.dispensedAt)
                 .status(this.status)
                 .build();
-    }
+        }
 
-    // Entity → DTO
-    public static Material_dispensing_Dto from(
-            Material_dispensing_Entity entity) {
-                
+        // Entity → DTO
+        // Entity → DTO
+        public static Material_dispensing_Dto from(Material_dispensing_Entity entity) {
         return Material_dispensing_Dto.builder()
                 .dispenseId(entity.getDispenseId())
-                .batchId(
-                        entity.getBatchesEntity() == null
-                                ? null : entity.getBatchesEntity().getBatchId())
+                .batchId(entity.getBatchesEntity() == null ? null: entity.getBatchesEntity().getBatchId())
+                .executionId(entity.getProcessExecutionEntity() == null ? null : entity.getProcessExecutionEntity().getExecution_id())
                 .materialCode(entity.getMaterialCode())
                 .materialName(entity.getMaterialName())
                 .rawMaterialLot(entity.getRawMaterialLot())
                 .targetQtyKg(entity.getTargetQtyKg())
                 .actualQtyKg(entity.getActualQtyKg())
-                .userId(
-                        entity.getUsersEntity() == null
-                                ? null : entity.getUsersEntity().getUserId())
+                .userId(entity.getUsersEntity() == null ? null : entity.getUsersEntity().getUserId())
                 .dispensedAt(entity.getDispensedAt())
                 .status(entity.getStatus())
                 .createdAt(entity.getCreatedAt())
                 .updatedAt(entity.getUpdatedAt())
                 .build();
-    }
+        }
     
 }

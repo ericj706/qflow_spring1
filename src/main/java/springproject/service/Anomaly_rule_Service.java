@@ -64,7 +64,7 @@ public class Anomaly_rule_Service {
         }
         java.math.BigDecimal[] values = {dto.getWarningMin(), dto.getWarningMax(), dto.getCriticalMin(), dto.getCriticalMax()};
         for (java.math.BigDecimal value : values) {
-            if (value != null && (value.stripTrailingZeros().scale() > 4 || value.abs().compareTo(new java.math.BigDecimal("1000000000")) >= 0)) {
+            if (value != null && (value.stripTrailingZeros().scale() > 3 || value.abs().compareTo(new java.math.BigDecimal("1000000000")) >= 0)) {
                 badRequest("기준값은 소수점 3자리까지, 절댓값 10억 미만이어야 합니다.");
             }
         }
@@ -95,24 +95,13 @@ public class Anomaly_rule_Service {
         return Anomaly_rule_Dto.from(anomaly_rule_Repository.save(entity));
     }
 
-    // 기존 ID, 생성시간, 이상 발생 기록과의 연결 유지
+    // 수정본은 새 규칙으로 저장하고 기존 규칙과 이상 발생 기록은 이력으로 보존
     @Transactional
     public Anomaly_rule_Dto update(Integer ruleId, Anomaly_rule_Dto dto) {
         validate(dto);
-        Anomaly_rule_Entity entity = requireRule(ruleId);
-        entity.setProcessCode(dto.getProcessCode());
-        entity.setSensorName(dto.getSensorName());
-        entity.setAnomalyType(dto.getAnomalyType());
-        entity.setConditionType(dto.getConditionType());
-        entity.setWarningMin(dto.getWarningMin());
-        entity.setWarningMax(dto.getWarningMax());
-        entity.setCriticalMin(dto.getCriticalMin());
-        entity.setCriticalMax(dto.getCriticalMax());
-        entity.setStatusValue(dto.getStatusValue());
-        entity.setDurationSeconds(dto.getDurationSeconds());
-        entity.setCheckItems(dto.getCheckItems());
-        entity.setResponseDescription(dto.getResponseDescription());
-        entity.setIsActive(dto.getIsActive());
+        Anomaly_rule_Entity previous = requireRule(ruleId);
+        previous.setIsActive(false);
+        Anomaly_rule_Entity entity = dto.toEntity();
         if (Boolean.TRUE.equals(entity.getIsActive())) { deactivateConflicts(entity); }
         return Anomaly_rule_Dto.from(anomaly_rule_Repository.save(entity));
     }
