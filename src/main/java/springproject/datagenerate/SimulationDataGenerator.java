@@ -12,8 +12,13 @@ import org.springframework.stereotype.Component;
 
 @Component
 public class SimulationDataGenerator {
-    @Value("${simulation.inspection-failure-rate:0.01}")
+    // 5공정은 검사 항목별 확률이 아니라 제품 한 개의 이상 발생 확률이다.
+    @Value("${simulation.packaging-anomaly-rate:${simulation.inspection-failure-rate:0.01}}")
     private double inspectionFailureRate;
+    @Value("${simulation.bulk-warning-rate:0.01}")
+    private double bulkWarningRate;
+    @Value("${simulation.bulk-failure-rate:0.01}")
+    private double bulkFailureRate;
 
     // 시뮬레이션 LOT의 고유번호를 생성한다.
     public String nextBatchId() {
@@ -58,27 +63,50 @@ public class SimulationDataGenerator {
         return data;
     }
 
-    // LOT당 벌크 검사 측정값을 생성한다. 최종 합격·불합격 판정은 수행하지 않는다.
+    // 검사 한 건의 시나리오를 선택한다. 기본 정상 98%, 주의 1%, 이상 1%이며 최종 판정은 기존 Service가 한다.
     public Map<String, Object> generateBulkQc(String batchId) {
         Map<String, Object> data = new LinkedHashMap<>();
         data.put("qc_id", batchId + "-QC1");
         data.put("sample_time", LocalDateTime.now());
-        data.put("ph_measured", random(5.4, 6.6, 3));
-        data.put("viscosity_measured", random(1400, 3600, 3));
+        validateRate(bulkWarningRate);
+        validateRate(bulkFailureRate);
+        if (bulkWarningRate + bulkFailureRate > 1) {
+            throw new IllegalArgumentException("벌크 주의·이상 확률 합계는 1 이하여야 합니다.");
+        }
+        data.put("ph_measured", random(5.9, 6.1, 3));
+        data.put("viscosity_measured", random(2300, 2700, 3));
         data.put("specific_gravity", random(1.01, 1.03, 4));
-        data.put("appearance_code", randomInspectionResult());
-        data.put("microbubble_code", randomInspectionResult());
-        // microbial_cfu는 합·불 문자열이 아닌 미생물 측정값이다.
-        data.put("microbial_cfu", Integer.toString(ThreadLocalRandom.current().nextInt(0, 11)));
+        data.put("appearance_code", "합격");
+        data.put("microbubble_code", "합격");
         data.put("qc_notes_code", "시뮬레이션 검사");
+        double scenario = ThreadLocalRandom.current().nextDouble();
+        if (scenario < bulkWarningRate) {
+            // 주의 시나리오는 수치 항목 하나만 주의 구간으로 생성한다.
+            if (ThreadLocalRandom.current().nextBoolean()) {
+                data.put("ph_measured", random(6.35, 6.45, 3));
+            } else {
+                data.put("viscosity_measured", random(3350, 3450, 3));
+            }
+        } else if (scenario < bulkWarningRate + bulkFailureRate) {
+            switch (ThreadLocalRandom.current().nextInt(4)) {
+                case 0 -> data.put("ph_measured", random(6.6, 6.8, 3));
+                case 1 -> data.put("viscosity_measured", random(3600, 3800, 3));
+                case 2 -> data.put("appearance_code", "불합격");
+                default -> data.put("microbubble_code", "불합격");
+            }
+        }
         return data;
     }
 
-    // 제품 한 개의 중량·실링 측정값을 생성하고 총중량을 구성 중량의 합으로 계산한다.
+    // 정상 제품은 모든 항목을 정상 범위에 둔다. 이상 제품만 원인 항목 하나를 선택한다.
     public Map<String, Object> generatePackaging(String batchId, int stageTick) {
-        BigDecimal sheet = random(2.8, 3.2, 3);
-        BigDecimal pouch = random(5.85, 6.15, 3);
-        BigDecimal essence = random(25.3, 26.7, 3);
+        validateRate(inspectionFailureRate);
+        boolean abnormal = ThreadLocalRandom.current().nextDouble() < inspectionFailureRate;
+        // 충진량·상부 실링·하부 실링·금속검사·비전검사 중 원인 하나만 선택한다.
+        int cause = abnormal ? ThreadLocalRandom.current().nextInt(5) : -1;
+        BigDecimal sheet = random(2.98, 3.02, 3);
+        BigDecimal pouch = random(5.98, 6.02, 3);
+        BigDecimal essence = cause == 0 ? random(26.8, 27.0, 3) : random(25.95, 26.05, 3);
         BigDecimal first = essence.divide(BigDecimal.valueOf(2), 3, RoundingMode.HALF_UP);
         Map<String, Object> data = new LinkedHashMap<>();
         data.put("pouch_id", batchId + "-UNIT-" + stageTick);
@@ -92,13 +120,14 @@ public class SimulationDataGenerator {
         data.put("fill_weight_1st_g", first);
         data.put("fill_weight_2nd_g", essence.subtract(first));
         data.put("gross_total_weight_g", sheet.add(pouch).add(essence));
-        data.put("upper_seal_temp_c", random(180, 185, 3));
-        data.put("lower_seal_temp_c", random(180, 185, 3));
+        data.put("upper_seal_temp_c", cause == 1 ? random(184.2, 185.0, 3) : random(182.0, 183.0, 3));
+        data.put("lower_seal_temp_c", cause == 2 ? random(184.2, 185.0, 3) : random(182.0, 183.0, 3));
         data.put("seal_pressure_bar", random(2.5, 3.5, 3));
         data.put("n2_residual_o2_pct", random(0.1, 1.0, 3));
-        data.put("checkweigher_status", randomInspectionResult());
-        data.put("metal_detector_status", randomInspectionResult());
-        data.put("vision_inspection_status", randomInspectionResult());
+        // 충진량 이상은 총중량과 중량선별기에도 반영되는 동일 원인의 결과다.
+        data.put("checkweigher_status", cause == 0 ? "불합격" : "합격");
+        data.put("metal_detector_status", cause == 3 ? "불합격" : "합격");
+        data.put("vision_inspection_status", cause == 4 ? "불합격" : "합격");
         data.put("note", "시뮬레이션 제품");
         return data;
     }
@@ -109,12 +138,11 @@ public class SimulationDataGenerator {
             .setScale(scale, RoundingMode.HALF_UP);
     }
 
-    // 검사별로 독립적인 합·불 결과를 생성한다. 기본 불합격 확률은 검사 한 항목당 1%다.
-    private String randomInspectionResult() {
-        if (!Double.isFinite(inspectionFailureRate) || inspectionFailureRate < 0 || inspectionFailureRate > 1) {
-            throw new IllegalArgumentException("simulation.inspection-failure-rate는 0~1이어야 합니다.");
+    // 확률 설정 오류를 검증한다.
+    private void validateRate(double rate) {
+        if (!Double.isFinite(rate) || rate < 0 || rate > 1) {
+            throw new IllegalArgumentException("시뮬레이션 확률은 0~1이어야 합니다.");
         }
-        return ThreadLocalRandom.current().nextDouble() < inspectionFailureRate ? "불합격" : "합격";
     }
 
     // 생성값에 DTO별 LOT·실행번호·작업자·출처와 재전송용 식별자를 붙인다.
@@ -131,6 +159,8 @@ public class SimulationDataGenerator {
         return Map.copyOf(data);
     }
 
-    // 상태 조회에서 표시할 개별 검사 불합격 확률을 반환한다.
+    // 기존 상태 API와 호환하며 제품 한 개의 이상 확률을 반환한다.
     public double inspectionFailureRate() { return inspectionFailureRate; }
+    public double bulkWarningRate() { return bulkWarningRate; }
+    public double bulkFailureRate() { return bulkFailureRate; }
 }

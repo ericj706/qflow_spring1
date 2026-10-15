@@ -222,8 +222,8 @@ public class Anomaly_event_Service {
             case "1공정관리자" -> "원료 칭량";
             case "2공정관리자" -> "가열/혼합";
             case "3공정관리자" -> "냉각";
-            case "4공정관리자" -> "벌크 품질검사";
-            case "5공정관리자" -> "충진·포장 및 최종검사";
+            case "4공정관리자" -> "벌크 검사";
+            case "5공정관리자" -> "최종 포장 검사";
             default -> throw new ResponseStatusException(HttpStatus.FORBIDDEN, "담당 공정을 확인할 수 없습니다.");
         };
     }
