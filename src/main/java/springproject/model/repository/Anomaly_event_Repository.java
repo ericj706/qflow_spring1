@@ -78,8 +78,14 @@ public interface Anomaly_event_Repository extends JpaRepository<Anomaly_event_En
             WHERE a.anomalyId = :anomalyId
             """)
     Optional<Anomaly_event_Entity> findByIdForUpdate(@Param("anomalyId") Long anomalyId);
-    // 이상 알림 팝업 전용 조회
-        // CSV 가져오기 데이터 제외 + 미처리 알림만 조회
+        // =====================================================
+        // 이상 알림 팝업 전용 조회
+        // - CSV 가져오기 데이터 제외
+        // - 미확인 알림 조회
+        // - 심각 알림은 확인 후에도 조치 완료 전까지 표시
+        // - 최고관리자: 전체 공정 조회
+        // - 일반관리자: 담당 공정만 조회
+        // =====================================================
         @Query("""
                 SELECT a
                 FROM Anomaly_event_Entity a
@@ -87,13 +93,20 @@ public interface Anomaly_event_Repository extends JpaRepository<Anomaly_event_En
                 AND (
                         a.actionStatus = '미확인'
                         OR (
-                                a.actionStatus = '확인됨'
-                                AND a.severity = '심각'
+                        a.actionStatus = '확인됨'
+                        AND a.severity = '심각'
                         )
-                        )
+                )
+                AND (
+                        :isSuperAdmin = true
+                        OR a.processCode = :processCode
+                )
                 ORDER BY a.occurredAt DESC, a.anomalyId DESC
                 """)
-        List<Anomaly_event_Entity> findActivePopupAnomalies();
+        List<Anomaly_event_Entity> findActivePopupAnomalies(
+                @Param("isSuperAdmin") boolean isSuperAdmin,
+                @Param("processCode") String processCode
+        );
 
     // 같은 측정값에 대한 이상 이력이 이미 저장되어 있는지 확인
     boolean existsBySourceAlarmId(String sourceAlarmId);
