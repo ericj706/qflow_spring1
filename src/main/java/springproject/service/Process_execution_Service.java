@@ -26,6 +26,7 @@ import springproject.model.dto.search.Process_execution_SearchDto;
 import springproject.model.entity.Anomaly_event_Entity;
 import springproject.model.entity.Batches_Entity;
 import springproject.model.entity.Bulk_qc_Entity;
+import springproject.model.entity.Filling_packaging_Entity;
 import springproject.model.entity.Process_execution_Entity;
 import springproject.model.entity.Users_Entity;
 import springproject.model.repository.Anomaly_event_Repository;
@@ -185,10 +186,10 @@ public class Process_execution_Service {
 
         // 5. 진행 중인 공정만 종료 가능
         if( !"진행중".equals(entity.getStatus())){throw new ResponseStatusException(HttpStatus.CONFLICT,"진행 중인 공정만 종료할 수 있습니다.");}
-        // 최종 포장 검사는 모든 제품의 판정이 끝나야 종료 가능
+
+        // 최종 포장 공정인지 확인
         boolean finalPackaging = "최종 포장 검사".equals(entity.getProcess_code());
         ExecutionPackagingSummary packagingSummary = null;
-        if (finalPackaging) {packagingSummary = checkPackagingResult(executionId);}
 
         // 6. 시작시간 확인 
         LocalDateTime startTime = entity.getStart_time();
@@ -252,6 +253,12 @@ public class Process_execution_Service {
         // 발생 이력의 처리 상태로 다음 공정 진행 여부 확인
         boolean alarmsHandled = checkAlarmStatus(entity);
         String qcBlockReason = checkBulkQcStatus(entity);
+
+        // 최종 포장은 측정값 판정과 필요한 알람 처리가 끝난 경우에만
+        // 제품별 합격/불합격 집계를 확인
+        if(finalPackaging && alarmsHandled){
+            packagingSummary = checkPackagingResult(executionId);
+        }
 
         // 다음 공정이 있고, 알람과 검사 조건을 모두 충족하면 자동 시작
         boolean startNext = nextProcessCode != null && alarmsHandled && qcBlockReason == null;
@@ -530,13 +537,18 @@ public class Process_execution_Service {
             nextProcessStatus = "검사 확인 대기";
             message = qcBlockReason;
         } else if (nextProcessCode == null) {
-            // 마지막 공정: 이미 완료된 LOT라면 기존 완료 상태 유지
+            // 이미 완료된 LOT라면 다시 처리하지 않음
             if (!"완료".equals(batch.getStatus())) {
+                // 추가: 확인·조치가 끝난 대기 제품을 합격으로 확정
+                completeHandledPackaging(entity);
+                // 모든 제품의 종합결과가 확정됐는지 확인하고 집계
                 ExecutionPackagingSummary packagingSummary = checkPackagingResult(executionId);
+                // 양품수·불량수·종료시간을 반영하고 LOT 완료
                 completeBatch(batch, entity, packagingSummary);
             }
             nextProcessStatus = "LOT 완료";
             message = "최종 포장 검사와 LOT 생산이 완료되었습니다.";
+
         } else {
             // 같은 LOT의 다음 공정이 이미 진행 중인지 확인
             long nextCount = pr.countByBatchAndProcessAndStatus(batchId,nextProcessCode,"진행중");
@@ -711,6 +723,107 @@ public class Process_execution_Service {
     }
 
     private final Filling_packaging_Repository filling_packaging_Repository;
+
+    // 완료된 최종 포장 공정에서 알람 처리 후 제품 종합결과 확정
+    // resume()의 트랜잭션과 LOT·공정 잠금 안에서 호출
+    private void completeHandledPackaging(Process_execution_Entity execution) {
+        if (!"최종 포장 검사".equals(execution.getProcess_code()) || !"완료".equals(execution.getStatus())) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,"완료된 최종 포장 공정에서만 결과를 확정할 수 있습니다.");
+        }
+        // 주의 확인·심각 조치가 모두 완료됐는지 확인
+        if (!checkAlarmStatus(execution)) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,"주의 알람 확인과 심각 알람 조치를 완료해 주세요.");
+        }
+        List<Filling_packaging_Entity> products = filling_packaging_Repository.findByExecutionId(execution.getExecution_id());
+        if (products.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,"등록된 포장 제품이 없습니다.");
+        }
+
+        List<Anomaly_event_Entity> alarms = anomaly_event_Repository.findByExecutionId(execution.getExecution_id());
+
+        for (Filling_packaging_Entity product : products) {
+            // LOT·공정 연결 확인
+            if (product.getBatchesEntity() == null
+                    || execution.getBatchesEntity() == null
+                    || !execution.getBatchesEntity().getBatchId().equals(
+                            product.getBatchesEntity().getBatchId())
+                    || product.getProcess_execution_Entity() == null
+                    || !execution.getExecution_id().equals(
+                            product.getProcess_execution_Entity()
+                                    .getExecution_id())) {
+                throw new ResponseStatusException(HttpStatus.CONFLICT,"제품의 LOT 또는 공정 실행 연결을 확인해 주세요.");
+            }
+            String disposition = product.getFinal_disposition();
+
+            // 이미 확정된 불합격은 알람을 처리해도 그대로 유지
+            if ("불합격".equals(disposition)) {continue;}
+
+            // 합격 또는 알람 처리 대기 중인 제품의 개별 검사 확인
+            boolean inspectionsPassed = isPackagingInspectionPassed(product.getCheckweigher_status())
+                    && isPackagingInspectionPassed(product.getMetal_detector_status())
+                    && isPackagingInspectionPassed(product.getVision_inspection_status());
+
+            if (!inspectionsPassed) {
+                throw new ResponseStatusException(HttpStatus.CONFLICT,"제품 " + product.getPouch_id()+ "의 개별 검사 결과를 확인해 주세요.");
+            }
+
+            // 이미 합격으로 확정된 제품은 유지
+            if ("합격".equals(disposition)) {continue;}
+
+            // 알 수 없는 종합결과를 임의로 합격 처리하지 않음
+            if (disposition != null && !disposition.isBlank()) {
+                throw new ResponseStatusException(HttpStatus.CONFLICT,"제품 " + product.getPouch_id()+ "의 종합결과를 확인해 주세요.");
+            }
+
+            // 이 제품의 수치 판정에서 발생한 알람이 있는지 확인
+            // 단순히 종합결과가 비어 있다는 이유로 합격시키지 않음
+            boolean hasMeasurementAlarm = false;
+
+            for (Anomaly_event_Entity alarm : alarms) {
+                if (alarm.getFilling_packaging_Entity() == null) {continue;}
+
+                boolean sameProduct = product.getPouch_id().equals(alarm.getFilling_packaging_Entity().getPouch_id());
+                String sensorName = alarm.getSensorName();
+                boolean numericItem =
+                        "sheet_dry_weight_g".equals(sensorName)
+                        || "pouch_tare_weight_g".equals(sensorName)
+                        || "essence_net_weight_g".equals(sensorName)
+                        || "gross_total_weight_g".equals(sensorName)
+                        || "upper_seal_temp_c".equals(sensorName)
+                        || "lower_seal_temp_c".equals(sensorName);
+
+                boolean abnormal =
+                        "주의".equals(alarm.getSeverity())
+                        || "심각".equals(alarm.getSeverity());
+
+                if (sameProduct
+                        && numericItem
+                        && abnormal
+                        && "자동판정".equals(alarm.getSourceType())) {
+                    hasMeasurementAlarm = true;
+                    break;
+                }
+            }
+
+            if (!hasMeasurementAlarm) {
+                throw new ResponseStatusException(HttpStatus.CONFLICT,"제품 " + product.getPouch_id()+ "의 수치 판정 이력이 없어 "+ "자동으로 합격 처리할 수 없습니다.");
+            }
+
+            // 개별 검사는 합격이고, 수치 알람의 처리도 끝난 제품
+            product.setFinal_disposition("합격");
+        }
+    }
+
+    // 개별 검사 합격 여부 확인
+    private boolean isPackagingInspectionPassed(String value) {
+        if (value == null) {
+            return false;
+        }
+
+        String result = value.trim();
+
+        return "합격".equals(result) || "적합".equals(result);
+    }
 
     // 해당 공정 실행에 등록된 모든 제품의 판정이 끝났는지 확인
     private ExecutionPackagingSummary checkPackagingResult(Long executionId) {
