@@ -1041,7 +1041,7 @@ public class Process_execution_Service {
         return Process_execution_Finish_Dto.builder()
                 .finishedExecution(Process_execution_Dto.from(execution))
                 .nextExecution(null)
-                .nextProcessStatus("LOT 폐기")
+                .nextProcessStatus("폐기")
                 .message("벌크 검사 불합격 LOT의 폐기가 확정되었습니다.")
                 .build();
     }
