@@ -108,6 +108,25 @@ public interface Anomaly_event_Repository extends JpaRepository<Anomaly_event_En
                 @Param("processCode") String processCode
         );
 
-    // 같은 측정값에 대한 이상 이력이 이미 저장되어 있는지 확인
-    boolean existsBySourceAlarmId(String sourceAlarmId);
+        // =====================================================
+        // 최고관리자 조치완료 알림 조회
+        // - 조치완료 상태만 조회
+        // - CSV 가져오기 데이터 제외
+        // - 전체 공정 대상
+        // - 최근 조치완료 순으로 정렬
+        // =====================================================
+        @Query("""
+                SELECT a
+                FROM Anomaly_event_Entity a
+                WHERE a.actionStatus = '조치완료'
+                AND (a.sourceType IS NULL OR a.sourceType <> 'CSV 가져오기')
+                AND a.actionTime IS NOT NULL
+                ORDER BY a.actionTime DESC, a.anomalyId DESC
+                """)
+        List<Anomaly_event_Entity> findCompletedActionNotifications(
+                Pageable pageable
+        );
+
+        // 같은 측정값에 대한 이상 이력이 이미 저장되어 있는지 확인
+        boolean existsBySourceAlarmId(String sourceAlarmId);
 }

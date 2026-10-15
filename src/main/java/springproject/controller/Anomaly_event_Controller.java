@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.Map;
 
 import org.springframework.data.domain.Page;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -12,6 +13,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import springproject.model.dto.Completed_action_notification_Dto;
 
 import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
@@ -32,23 +34,45 @@ public class Anomaly_event_Controller {
     // 1. 전체조회 + 조건검색 + 페이징 (기존 기능 유지)
     @GetMapping("")
     public Page_response<Anomaly_event_Dto> findaAll(
-            @ModelAttribute Anomaly_event_SearchDto searchDto,
-            @RequestParam(name = "page", defaultValue = "0") int page) {
-        Page<Anomaly_event_Dto> result = anomaly_event_Service.search(searchDto, page);
-        return Page_response.from(result, Map.of());
-    }
+        @ModelAttribute Anomaly_event_SearchDto searchDto,
+        @RequestParam(name = "page", defaultValue = "0") int page,
+        HttpSession session) {
 
+    Page<Anomaly_event_Dto> result =
+            anomaly_event_Service.search(searchDto, page, session);
+
+    return Page_response.from(result, Map.of());
+}
     // 2. 팝업 전용 조회: 세션을 Service에 전달해 로그인/담당 공정을 검사
     @GetMapping(value = "/popup", produces = "application/json")
     public List<Anomaly_event_Dto> getPopupAnomalies(HttpSession session) {
         return anomaly_event_Service.findActivePopupAnomalies(session);
     }
 
-    // 3. 개별조회 (기존 기능 유지)
-    @GetMapping("/{anomaly_id}")
-    public Anomaly_event_Dto findOne(@PathVariable(name = "anomaly_id") Long anomaly_id) {
-        return anomaly_event_Service.findOne(anomaly_id);
+    @GetMapping("/completed-notifications")
+    public List<Completed_action_notification_Dto> getCompletedNotifications(
+            HttpSession session) {
+        return anomaly_event_Service.findCompletedActionNotifications(session);
     }
+
+    @PatchMapping("/completed-notifications/{notificationId}/read")
+    public ResponseEntity<Void> markCompletedNotificationAsRead(
+            @PathVariable Long notificationId,
+            HttpSession session) {
+
+        anomaly_event_Service.markCompletedNotificationAsRead(
+                notificationId, session
+        );
+
+        return ResponseEntity.noContent().build();
+    }
+
+    // 3. 개별조회 (기존 기능 유지)
+   @GetMapping("/{anomaly_id}")
+public Anomaly_event_Dto findOne(
+        @PathVariable(name = "anomaly_id") Long anomaly_id,
+        HttpSession session) { return anomaly_event_Service.findOne(anomaly_id, session);
+}
 
     // 4. 공정 실행별 알림 조회 (기존 기능 유지)
     @GetMapping("/executions/{executionId}")
