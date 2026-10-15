@@ -24,9 +24,11 @@ public interface Filling_packaging_Repository extends JpaRepository<Filling_pack
     @Query(value = """
         SELECT 
             DATE_FORMAT(timestamp, '%Y-%m-%d') AS timeGroup,
-            COUNT(CASE WHEN final_disposition IN ('합격') THEN 1 END) AS passCount,
-            COUNT(CASE WHEN final_disposition NOT IN ('합격') OR final_disposition IS NULL THEN 1 END) AS failCount,
-            ROUND((COUNT(CASE WHEN final_disposition NOT IN ('합격') OR final_disposition IS NULL THEN 1 END) / COUNT(*)) * 100, 2) AS defectRate
+            COUNT(CASE WHEN final_disposition = '합격' THEN 1 END) AS passCount,
+            COUNT(CASE WHEN final_disposition = '불합격' THEN 1 END) AS failCount,
+            COALESCE(ROUND(100.0* COUNT(CASE WHEN final_disposition = '불합격' THEN 1 END)
+                    / NULLIF(
+                        COUNT(CASE WHEN final_disposition IN ('합격', '불합격') THEN 1 END),0),2),0.00) AS defectRate
         FROM filling_packaging
         WHERE (:startAt IS NULL OR timestamp >= :startAt)
           AND (:endAtExclusive IS NULL OR timestamp < :endAtExclusive)
@@ -92,20 +94,29 @@ public interface Filling_packaging_Repository extends JpaRepository<Filling_pack
         @Param("startAt") LocalDateTime startAt,
         @Param("endAtExclusive") LocalDateTime endAtExclusive);
 
-    // 5. 최근 5개 LOT 집계
+    // 5. 최근 5개 LOT 집계 — 판정 완료 제품 기준
     @Query(value = """
-        SELECT 
+        SELECT
             b.batch_id AS timeGroup,
-            COUNT(CASE WHEN f.final_disposition IN ('합격') THEN 1 END) AS passCount,
-            COUNT(CASE WHEN f.pouch_id IS NOT NULL AND (f.final_disposition NOT IN ('합격') OR f.final_disposition IS NULL) THEN 1 END) AS failCount,
-            IFNULL(ROUND((COUNT(CASE WHEN f.pouch_id IS NOT NULL AND (f.final_disposition NOT IN ('합격') OR f.final_disposition IS NULL) THEN 1 END) / NULLIF(COUNT(f.pouch_id), 0)) * 100, 2), 0.00) AS defectRate
+            COUNT(CASE WHEN f.final_disposition = '합격' THEN 1 END) AS passCount,
+            COUNT(CASE WHEN f.final_disposition = '불합격' THEN 1 END) AS failCount,
+            COALESCE(
+                ROUND(
+                    100.0
+                    * COUNT(
+                        CASE WHEN f.final_disposition = '불합격' THEN 1 END
+                    )
+                    / NULLIF( COUNT( CASE WHEN f.final_disposition IN ('합격', '불합격')THEN 1 END),0),2),0.00) AS defectRate
         FROM (
-            SELECT batch_id, start_time 
-            FROM batches 
-            ORDER BY start_time DESC 
+            SELECT batch_id, start_time
+            FROM batches
+            ORDER BY start_time DESC
             LIMIT 5
         ) b
-        LEFT JOIN filling_packaging f ON b.batch_id = f.batch_id
+
+        LEFT JOIN filling_packaging f
+            ON b.batch_id = f.batch_id
+
         GROUP BY b.batch_id, b.start_time
         ORDER BY b.start_time ASC
         """, nativeQuery = true)
