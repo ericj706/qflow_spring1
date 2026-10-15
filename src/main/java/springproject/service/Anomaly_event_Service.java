@@ -404,6 +404,14 @@ public class Anomaly_event_Service {
             Long anomalyId, Anomaly_event_Action_Dto request, HttpSession session) {
         Users_Entity loginUser = requireLoginManager(session);
 
+        // 조치 완료는 최고관리자만 가능
+        if (!"최고관리자".equals(loginUser.getRole())) {
+            throw new ResponseStatusException(
+                HttpStatus.FORBIDDEN,
+                "조치 완료는 최고관리자만 할 수 있습니다."
+    );
+}
+
         // 1. 알람번호 확인
 
         if (anomalyId == null || anomalyId <= 0) {
