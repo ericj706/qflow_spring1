@@ -179,21 +179,42 @@ public class Simulation_Service {
         applyCompletion(result);
     }
 
-    // 실제 종료 결과를 기준으로 다음 공정의 데이터 생성 상태를 갱신한다.
+    // 공정 종료·LOT 완료·LOT 폐기 결과를 생성기에 반영
     private void applyCompletion(springproject.model.dto.Process_execution_Finish_Dto result) {
-        remember(new SimulationSample(++sequence, "process_execution", batchId, executionId,
-            PROCESSES[processIndex], LocalDateTime.now(), Map.of("status", result.getFinishedExecution().getStatus(), "message", result.getMessage())));
-        if (result.getNextExecution() != null) useExecution(result.getNextExecution());
-        else if ("LOT 완료".equals(result.getNextProcessStatus())) {
-            completedBatchId = batchId;
+        remember(new SimulationSample(++sequence,"process_execution",batchId,executionId,PROCESSES[processIndex],LocalDateTime.now(),
+                Map.of("status", result.getFinishedExecution().getStatus(),"message", result.getMessage())
+        ));
+        String nextProcessStatus = result.getNextProcessStatus();
+
+        // LOT 완료 또는 폐기 시 현재 LOT의 생성 작업 종료
+        if ("LOT 완료".equals(nextProcessStatus) || "LOT 폐기".equals(nextProcessStatus)) {
+            // 완료된 LOT 기록에는 정상 완료만 저장
+            if ("LOT 완료".equals(nextProcessStatus)) {completedBatchId = batchId;}
             batchId = null;
             executionId = null;
             processStartedAt = null;
-            waitingReason = null;
+
+            processIndex = 0;
+            stageTick = 0;
+            materialTotal = BigDecimal.ZERO;
+
+            // 종료된 LOT의 미전송 요청을 다시 보내지 않도록 해제
+            pending = null;
+            waitingReason = "LOT 폐기".equals(nextProcessStatus) ? "LOT가 폐기되었습니다. 다음 LOT를 준비합니다.": null;
             nextLotAt = clock.instant().plusMillis(Math.max(0, lotDelayMs));
-            // 완료 후 다음 LOT 하나만 준비하고, 새 공정 시작 버튼을 기다린다.
+            // 다음 LOT 하나를 준비하도록 설정
             lotPrepared = false;
-        } else waitingReason = result.getMessage();
+            return;
+        }
+
+        // 다음 공정이 시작됐으면 해당 실행번호로 측정값 생성
+        if (result.getNextExecution() != null) {
+            useExecution(result.getNextExecution());
+            return;
+        }
+
+        // 알람 확인·조치 등으로 진행 대기
+        waitingReason = result.getMessage();
     }
 
     // 요청을 한 번 구성해 보관하고 저장을 시도한다.

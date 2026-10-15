@@ -137,24 +137,27 @@ public class Bulk_qc_Service {
         return null;
     }   
     
-    // 최종 검사결과 및 비고 수정
+    // 종합결과 및 비고 수정
     @Transactional(isolation = Isolation.READ_COMMITTED)
     public Bulk_qc_Dto updateQcResult(String qc_id, Bulk_qc_Dto dto) {
         if (dto == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"수정할 내용을 입력해 주세요.");
         }
-        // LOT 잠금 및 승인 여부 확인 후 변경 가능한 검사 반환
+
+        // LOT 잠금 및 기존 변경 제한 확인
         Bulk_qc_Entity entity = findEditableQc(qc_id);
         String result = dto.getOverall_qc_result();
+        // 종합결과를 전달한 경우에만 추가 제한 확인
         if (result != null && !result.isBlank()) {
+            checkManualResultChange(entity);
             result = result.trim();
             if (!"합격".equals(result) && !"불합격".equals(result)) {
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"검사 결과는 합격 또는 불합격으로 입력해 주세요.");
             }
             entity.setOverall_qc_result(result);
         }
+        // 비고만 전달했다면 종합결과를 변경하지 않음
         if (dto.getQc_notes_code() != null) {entity.setQc_notes_code(dto.getQc_notes_code());}
-        // 트랜잭션 종료 시 변경 내용 저장
         return Bulk_qc_Dto.from(entity);
     }
 
@@ -162,6 +165,8 @@ public class Bulk_qc_Service {
     @Transactional(isolation = Isolation.READ_COMMITTED)
     public Bulk_qc_Dto deleteResult(String qc_id) {
         Bulk_qc_Entity entity = findEditableQc(qc_id);
+        // 공정 종료 후에는 종합결과 초기화 금지
+        checkManualResultChange(entity);
         entity.setOverall_qc_result(null);
         entity.setQc_notes_code(null);
         return Bulk_qc_Dto.from(entity);
@@ -199,6 +204,11 @@ public class Bulk_qc_Service {
         if (batch == null) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND,"해당 LOT가 없습니다.");
         }
+        // 폐기된 LOT의 검사 결과는 수정·초기화 금지
+        if ("폐기".equals(batch.getStatus())) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,"폐기된 LOT의 검사 결과는 수정하거나 초기화할 수 없습니다.");
+        }
+
         // 잠금을 얻은 뒤 검사 기록 조회
         Bulk_qc_Entity entity = bulk_qc_Repository.findById(qcId).orElse(null);
         if (entity == null) {
@@ -227,6 +237,21 @@ public class Bulk_qc_Service {
             throw new ResponseStatusException(HttpStatus.CONFLICT,"최종 승인된 검사 결과는 수정하거나 초기화할 수 없습니다.");
         }
         return entity;
+    }
+
+    // 종합결과의 수동 변경은 진행 중인 벌크 공정에서만 허용
+    // 반드시 findEditableQc()로 LOT 잠금을 얻은 후 호출
+    private void checkManualResultChange(Bulk_qc_Entity entity) {
+        Process_execution_Entity execution = entity.getProcess_execution_Entity();
+        if (execution == null) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,"공정 실행이 연결되지 않은 검사 결과는 변경할 수 없습니다.");
+        }
+
+        if (!"벌크 검사".equals(execution.getProcess_code())
+                || !"진행중".equals(execution.getStatus())
+                || !"진행중".equals(entity.getBatchesEntity().getStatus())) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,"진행 중인 벌크 검사의 종합결과만 수동으로 변경할 수 있습니다.");
+        }
     }
 
 

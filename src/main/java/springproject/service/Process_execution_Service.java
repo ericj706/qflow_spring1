@@ -180,6 +180,10 @@ public class Process_execution_Service {
         Batches_Entity batch = batches_Repository.findByIdForUpdate(batchId).orElse(null);
         if(batch == null){ throw new ResponseStatusException(HttpStatus.NOT_FOUND,"해당 LOT가 없습니다.");}
 
+        if ("폐기".equals(batch.getStatus())) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,"폐기된 LOT의 공정은 종료 처리할 수 없습니다.");
+        }
+
         // 4. 공정 실행 기록 조회 및 잠금
         Process_execution_Entity entity = pr.findByIdForUpdate(executionId).orElse(null);
         if (entity == null) {throw new ResponseStatusException(HttpStatus.NOT_FOUND,"해당 공정 실행 기록이 없습니다.");}
@@ -189,6 +193,8 @@ public class Process_execution_Service {
 
         // 최종 포장 공정인지 확인
         boolean finalPackaging = "최종 포장 검사".equals(entity.getProcess_code());
+        // 최종 포장 종료 후 LOT까지 완료됐는지
+        boolean lotCompleted = false;
         ExecutionPackagingSummary packagingSummary = null;
 
         // 6. 시작시간 확인 
@@ -276,8 +282,7 @@ public class Process_execution_Service {
         Process_execution_Entity finished = pr.save(entity);
 
         // 최종 공정이며 알람 처리까지 끝났다면 LOT도 완료
-        if (finalPackaging && alarmsHandled) {completeBatch(batch, finished, packagingSummary);}
-
+        if (finalPackaging && alarmsHandled) {lotCompleted = completeBatch(batch,finished,packagingSummary);}
         // 다음 공정 자동 시작
         Process_execution_Dto nextExecution = null;
         if (startNext) {
@@ -310,6 +315,9 @@ public class Process_execution_Service {
         } else if (nextExecution != null) {
             nextProcessStatus = "다음 공정 시작";
             message = nextProcessCode + " 공정이 시작되었습니다.";
+        } else if (finalPackaging && !lotCompleted) {
+            nextProcessStatus = "제품 폐기 대기";
+            message = "불합격 제품의 폐기 확정이 필요합니다. " + "4·5공정 관리자가 제품별 폐기를 확정해 주세요.";
         } else if (finalPackaging) {
             nextProcessStatus = "LOT 완료";
             message = "최종 포장 검사와 LOT 생산이 완료되었습니다.";
@@ -481,6 +489,11 @@ public class Process_execution_Service {
         if (batch == null) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND,"해당 LOT가 없습니다.");
         }
+
+        if ("폐기".equals(batch.getStatus())) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,"폐기된 LOT는 다음 공정으로 진행할 수 없습니다.");
+        }
+
         // 4. 완료된 공정 실행 조회 및 잠금
         Process_execution_Entity entity = pr.findByIdForUpdate(executionId).orElse(null);
         if (entity == null) {
@@ -537,18 +550,22 @@ public class Process_execution_Service {
             nextProcessStatus = "검사 확인 대기";
             message = qcBlockReason;
         } else if (nextProcessCode == null) {
-            // 이미 완료된 LOT라면 다시 처리하지 않음
-            if (!"완료".equals(batch.getStatus())) {
-                // 추가: 확인·조치가 끝난 대기 제품을 합격으로 확정
+            boolean lotCompleted = "완료".equals(batch.getStatus());
+            if(!lotCompleted){
+                // 알람 확인/조치가 끝난 대기 제품의 종합결과 확정
                 completeHandledPackaging(entity);
-                // 모든 제품의 종합결과가 확정됐는지 확인하고 집계
+                // 모든 제품의 판정 완료 여부 확인 및 수량 집계
                 ExecutionPackagingSummary packagingSummary = checkPackagingResult(executionId);
-                // 양품수·불량수·종료시간을 반영하고 LOT 완료
-                completeBatch(batch, entity, packagingSummary);
+                // 불합격 제품의 폐기까지 끝났는지 확인
+                lotCompleted = completeBatch(batch, entity, packagingSummary);
             }
-            nextProcessStatus = "LOT 완료";
-            message = "최종 포장 검사와 LOT 생산이 완료되었습니다.";
-
+            if(lotCompleted){
+                nextProcessStatus = "LOT 완료";
+                message = "최종 포장 검사와 LOT 생산이 완료되었습디ㅏ."; 
+            }else{
+                nextProcessStatus = "제품 폐기 대기";
+                message = "불합격 제품의 폐기 확정이 필요합니다." + "4·5공정 관리자가 제품별 폐기를 확정해 주세요.";
+            }
         } else {
             // 같은 LOT의 다음 공정이 이미 진행 중인지 확인
             long nextCount = pr.countByBatchAndProcessAndStatus(batchId,nextProcessCode,"진행중");
@@ -615,6 +632,11 @@ public class Process_execution_Service {
         if (batch == null) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND,"해당 LOT가 없습니다.");
         }
+
+        if ("폐기".equals(batch.getStatus())) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,"폐기된 LOT의 검사 결과는 승인할 수 없습니다.");
+        }
+
         // 4. 공정 실행 조회 및 잠금
         Process_execution_Entity execution = pr.findByIdForUpdate(executionId).orElse(null);
         if (execution == null) {
@@ -678,6 +700,17 @@ public class Process_execution_Service {
     private String checkBulkQcStatus(Process_execution_Entity execution) {
         // 벌크 검사 이외의 공정에는 적용하지 않음
         if (!"벌크 검사".equals(execution.getProcess_code())) {return null;}
+
+        // 불합격 검사 기록이 있으면 승인 안내 대신 폐기 안내
+        boolean hasFailedInspection = bulk_qc_Repository
+                        .findByExecutionId(execution.getExecution_id())
+                        .stream()
+                        .anyMatch(inspection -> "불합격".equals(inspection.getOverall_qc_result()));
+        if (hasFailedInspection) {
+            return "벌크 검사 종합결과가 불합격입니다. "+ "4·5공정 관리자가 LOT 전체 폐기를 확정해 주세요.";
+        }
+
+
         // 1. 자동 합격으로 확정된 경우
         if (Boolean.TRUE.equals(execution.getBulkQcAutoPassed())) {
             List<Bulk_qc_Entity> inspections = bulk_qc_Repository.findByExecutionId(execution.getExecution_id());
@@ -843,24 +876,50 @@ public class Process_execution_Service {
         return summary;
     }
 
-    // 최종 포장 공정 종료 후 LOT 완료 처리  // actualUnits는 전체 생산수량이 아니라 양품수량으로 정의
-    // 호출 전에 알람 처리 여부와 포장 판정 완료 여부를 확인해야 함
-    private void completeBatch(Batches_Entity batch,Process_execution_Entity execution,ExecutionPackagingSummary summary) {
-        if (!"최종 포장 검사".equals(execution.getProcess_code()) || !"완료".equals(execution.getStatus()) || execution.getEnd_time() == null) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT,"최종 포장 검사 공정이 종료되어야 LOT를 완료할 수 있습니다.");
+    // 최종 포장 공정의 LOT 완료 처리
+    // true: LOT 완료
+    // false: 불합격 제품의 폐기 확정 대기
+    private boolean completeBatch(
+            Batches_Entity batch,
+            Process_execution_Entity execution,
+            ExecutionPackagingSummary summary) {
+        if (!"최종 포장 검사".equals(execution.getProcess_code())
+                || !"완료".equals(execution.getStatus())
+                || execution.getEnd_time() == null) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,"최종 포장 공정이 종료되어야 LOT를 완료할 수 있습니다.");
         }
-        // 반복 요청으로 완료시간이나 수량을 다시 변경하지 않음
-        if ("완료".equals(batch.getStatus())) {return;}
-        if (!"진행중".equals(batch.getStatus())) {throw new ResponseStatusException(HttpStatus.CONFLICT,"진행중 상태의 LOT만 완료할 수 있습니다.");
+
+        // 이미 완료된 LOT는 수량·시간을 다시 변경하지 않음
+        if ("완료".equals(batch.getStatus())) {return true;}
+
+        if (!"진행중".equals(batch.getStatus())) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,"진행중 상태의 LOT만 완료할 수 있습니다.");
         }
+
+        List<Filling_packaging_Entity> products = filling_packaging_Repository.findByExecutionId(execution.getExecution_id());
+        if (products.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,"등록된 포장 제품이 없습니다.");
+        }
+        boolean disposalPending = false;
+        // 불합격 제품은 모두 폐기 확정이 되어야 LOT 완료 가능
+        for (Filling_packaging_Entity product : products) {
+            if (!"불합격".equals(product.getFinal_disposition())) {continue;}
+            String disposalStatus = product.getDisposalStatus();
+            // 새 판정 또는 기존 미설정 기록은 폐기 대기로 표시
+            if (disposalStatus == null || disposalStatus.isBlank()) {product.setDisposalStatus("폐기대기");}
+            if (!"폐기완료".equals(product.getDisposalStatus())) {disposalPending = true;}
+        }
+
+        // 판정 결과와 폐기 대기 상태는 저장하고 LOT 완료만 보류
+        if (disposalPending) {return false;}
+
+        // 모든 판정·알람 처리·불합격 제품 폐기가 끝났을 때 완료
         batch.setActualUnits(Math.toIntExact(summary.getPassCount()));
         batch.setDefectUnits(Math.toIntExact(summary.getFailCount()));
-
-        // 알람 확인 시각이 아닌 실제 마지막 공정 종료시각 사용
         batch.setEndTime(execution.getEnd_time());
         batch.setStatus("완료");
 
-        // finish()/resume()의 트랜잭션 안에서 변경 내용이 자동 저장됨
+        return true;
     }
 
     // 해당 공정의 활성 관리자 중 담당 공정이 없는 첫 번째 관리자 조회
@@ -887,6 +946,104 @@ public class Process_execution_Service {
             if (assignedCount == 0) {return manager;}
         }
         throw new ResponseStatusException(HttpStatus.CONFLICT,processCode + " 공정의 관리자가 모두 다른 공정을 담당 중입니다.");
+    }
+
+    // 4공정 불합격 LOT 폐기 확정
+    // loginUserId는 Controller가 로그인 세션에서 꺼내서 전달
+    @Transactional(isolation = Isolation.READ_COMMITTED)
+    public Process_execution_Finish_Dto discardBulkQc(
+            Long executionId, Integer loginUserId) {
+        // 1. 로그인 확인
+        if (loginUserId == null) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED,"로그인 후 폐기를 진행해 주세요.");
+        }
+        // 2. 현재 사용자 상태와 역할 확인
+        Users_Entity user = users_Repository.findById(loginUserId).orElse(null);
+        if (user == null || !Boolean.TRUE.equals(user.getIsActive())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN,"활성 사용자만 폐기를 확정할 수 있습니다.");
+        }
+        String role = user.getRole();
+        if (!"4공정관리자".equals(role) && !"5공정관리자".equals(role)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN,"4공정관리자 또는 5공정관리자만 폐기를 확정할 수 있습니다.");
+        }
+        // 3. 실행번호 확인
+        if (executionId == null || executionId <= 0) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"올바른 공정 실행번호를 입력해 주세요.");
+        }
+        String batchId = pr.findBatchIdByExecutionId(executionId).orElse(null);
+        if (batchId == null) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND,"해당 공정 실행 기록이 없습니다.");
+        }
+        // 4. 종료·재개와 같은 순서로 LOT → 공정 실행 잠금
+        Batches_Entity batch = batches_Repository.findByIdForUpdate(batchId).orElse(null);
+        if (batch == null) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND,"해당 LOT가 없습니다.");
+        }
+        Process_execution_Entity execution = pr.findByIdForUpdate(executionId).orElse(null);
+        if (execution == null) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND,"해당 공정 실행 기록이 없습니다.");
+        }
+        if (execution.getBatchesEntity() == null || !batchId.equals(execution.getBatchesEntity().getBatchId())) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,"공정 실행의 LOT 연결을 확인해 주세요."
+            );
+        }
+        // 5. 이번 기능은 4공정 벌크 검사 전용
+        if (!"벌크 검사".equals(execution.getProcess_code())) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,"이 기능은 벌크 검사 불합격 LOT의 폐기용입니다.");
+        }
+        // 6. 이미 폐기됐다면 최초 처리자와 시간을 유지
+        if ("폐기".equals(batch.getStatus()) && "폐기".equals(execution.getStatus())) {
+            return Process_execution_Finish_Dto.builder()
+            .finishedExecution(Process_execution_Dto.from(execution))
+                    .nextExecution(null)
+                    .nextProcessStatus("LOT 폐기")
+                    .message("이미 폐기 처리된 LOT입니다.")
+                    .build();
+        }
+        // 7. 검사 종료 후 진행 대기 중인 LOT만 폐기 가능
+        if (!"진행중".equals(batch.getStatus())) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,"진행중 상태의 LOT만 폐기할 수 있습니다.");
+        }
+        if (!"완료".equals(execution.getStatus())) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,"벌크 검사를 종료하고 종합결과를 확인한 후 폐기해 주세요.");
+        }
+
+        // 8. 이미 5공정으로 넘어갔다면 4공정에서 폐기 불가
+        Process_execution_Entity nextExecution = pr.findNextByExecutionId(executionId).orElse(null);
+        if (nextExecution != null) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,"다음 공정이 이미 시작되어 4공정에서 폐기할 수 없습니다.");
+        }
+
+        // 9. 실제 불합격 검사 기록 확인
+        List<Bulk_qc_Entity> inspections = bulk_qc_Repository.findByExecutionId(executionId);
+        boolean hasFailedInspection = false;
+        for (Bulk_qc_Entity inspection : inspections) {
+            if (inspection.getBatchesEntity() == null || !batchId.equals(inspection.getBatchesEntity().getBatchId())) {
+                throw new ResponseStatusException(HttpStatus.CONFLICT,"벌크 검사 기록의 LOT 연결을 확인해 주세요.");
+            }
+            if ("불합격".equals(inspection.getOverall_qc_result())) {hasFailedInspection = true;}
+        }
+        if (!hasFailedInspection) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,"종합결과가 불합격인 벌크 검사 기록이 있어야 폐기할 수 있습니다.");
+        }
+
+        // 10. LOT 폐기 및 최종 처리 담당자 저장
+        batch.setStatus("폐기");
+        batch.setUsersEntity(user);
+        batch.setEndTime(LocalDateTime.now());
+
+        // 11. 해당 4공정 실행도 폐기로 변경
+        // 기존 검사 종료시간·소요시간·공정 담당자는 유지
+        execution.setStatus("폐기");
+
+        // 측정값·검사 결과·알람 이력은 삭제하지 않음
+        // 트랜잭션 정상 종료 시 변경 내용 저장
+        return Process_execution_Finish_Dto.builder()
+                .finishedExecution(Process_execution_Dto.from(execution))
+                .nextExecution(null)
+                .nextProcessStatus("LOT 폐기")
+                .message("벌크 검사 불합격 LOT의 폐기가 확정되었습니다.")
+                .build();
     }
 
 
