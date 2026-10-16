@@ -22,7 +22,8 @@ public class SimulationDataGenerator {
 
     // 시뮬레이션 LOT의 고유번호를 생성한다.
     public String nextBatchId() {
-        return "SIM-" + UUID.randomUUID().toString().replace("-", "").substring(0, 24);
+        return "SIM-" + UUID.randomUUID().toString().replace("-", "")
+            .substring(0, 24);
     }
 
     // 신규 LOT의 목표량·제품·탱크 정보를 만든다.
@@ -146,7 +147,9 @@ public class SimulationDataGenerator {
     }
 
     // 생성값에 DTO별 LOT·실행번호·작업자·출처와 재전송용 식별자를 붙인다.
-    public Map<String, Object> preparePayload(String tableName, Map<String, Object> values, String batchId, Long executionId, int userId) {
+    public Map<String, Object> preparePayload(
+            String tableName, Map<String, Object> values, 
+            String batchId, Long executionId, int userId) {
         Map<String, Object> data = new LinkedHashMap<>(values);
         data.put("userId", userId);
         if (!"sensor_telemetry".equals(tableName) && !"filling_packaging".equals(tableName)) data.put("batchId", batchId);

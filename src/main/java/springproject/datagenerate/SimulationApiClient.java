@@ -1,8 +1,12 @@
 package springproject.datagenerate;
 
 import java.math.BigDecimal;
+import java.net.http.HttpClient;
+import java.time.Duration;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
@@ -27,9 +31,9 @@ public class SimulationApiClient {
     // 기존 REST API를 호출하는 클라이언트에 연결·응답 제한시간을 설정한다.
     public SimulationApiClient(RestClient.Builder builder,
         @Value("${simulation.api-base-url:http://localhost:${server.port:8080}}") String baseUrl) {
-        var http = java.net.http.HttpClient.newBuilder().connectTimeout(java.time.Duration.ofSeconds(5)).build();
+        var http = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(5)).build();
         var factory = new JdkClientHttpRequestFactory(http);
-        factory.setReadTimeout(java.time.Duration.ofSeconds(10));
+        factory.setReadTimeout(Duration.ofSeconds(10));
         api = builder.baseUrl(baseUrl).requestFactory(factory).build();
     }
 
@@ -47,12 +51,12 @@ public class SimulationApiClient {
     public Completion finishOrResume(Long executionId) {
         Process_execution_Dto current = api.get().uri("/mask/process-executions/{id}", executionId)
             .retrieve().body(Process_execution_Dto.class);
-        String operation = "완료".equals(java.util.Objects.requireNonNull(current).getStatus()) ? "resume" : "finish";
+        String operation = "완료".equals(Objects.requireNonNull(current).getStatus()) ? "resume" : "finish";
         try {
             var result = api.patch().uri("/mask/process-executions/{id}/" + operation, executionId)
                 .header("X-Simulation-Request", "true")
                 .retrieve().body(Process_execution_Finish_Dto.class);
-            return new Completion(java.util.Objects.requireNonNull(result), null);
+            return new Completion(Objects.requireNonNull(result), null);
         } catch (RestClientResponseException response) {
             if (response.getStatusCode().value() != 409) throw response;
             return new Completion(null, response.getResponseBodyAsString());
