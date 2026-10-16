@@ -77,7 +77,8 @@ public interface Anomaly_event_Repository extends JpaRepository<Anomaly_event_En
             FROM Anomaly_event_Entity a
             WHERE a.anomalyId = :anomalyId
             """)
-    Optional<Anomaly_event_Entity> findByIdForUpdate(@Param("anomalyId") Long anomalyId);
+    Optional<Anomaly_event_Entity> findByIdForUpdate
+                        (@Param("anomalyId") Long anomalyId);
         // =====================================================
         // 이상 알림 팝업 전용 조회
         // - CSV 가져오기 데이터 제외
@@ -130,3 +131,5 @@ public interface Anomaly_event_Repository extends JpaRepository<Anomaly_event_En
         // 같은 측정값에 대한 이상 이력이 이미 저장되어 있는지 확인
         boolean existsBySourceAlarmId(String sourceAlarmId);
 }
+
+

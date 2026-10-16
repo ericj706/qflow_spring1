@@ -520,11 +520,13 @@ public class Anomaly_event_Service {
 
         // 최초 확인자와 처리시간을 덮어쓰지 않음
 
-        if ("확인됨".equals(alarm.getActionStatus()) || "조치완료".equals(alarm.getActionStatus())) {return Anomaly_event_Dto.from(alarm);}
+        if ("확인됨".equals(alarm.getActionStatus()) 
+            || "조치완료".equals(alarm.getActionStatus())) 
+                {return Anomaly_event_Dto.from(alarm);}
 
-        // 12. 미확인 상태만 변경
-
-        if (!"미확인".equals(alarm.getActionStatus())) {throw new ResponseStatusException(HttpStatus.CONFLICT,"알람의 조치 상태를 확인해 주세요.");}
+        if (!"미확인".equals(alarm.getActionStatus())) 
+            {throw new ResponseStatusException(HttpStatus.CONFLICT,
+                "알람의 조치 상태를 확인해 주세요.");}
 
         // 13. 확인 결과 저장
 
@@ -753,37 +755,18 @@ public class Anomaly_event_Service {
         // 12. 이미 조치 완료된 경우
 
         if ("조치완료".equals(alarm.getActionStatus())) {
-
-            // 같은 요청의 재전송이면 기존 결과 반환
-
             boolean sameUser = alarm.getUsers_Entity() != null
-
                     && request.getUserId().equals(
-
                         alarm.getUsers_Entity().getUserId()
-
                     );
-
-            // 저장된 조치내역과 현재 요청의 조치내역 비교
-
             boolean sameNote = savedActionNote.equals(alarm.getActionNote());
-
-            // 같은 담당자가 동일한 조치내역을 다시 전송했다면 기존 결과 반환
-
             if (sameUser && sameNote) {
-
                 return Anomaly_event_Dto.from(alarm);
 
             }
-
-            // 기존 조치 기록을 새 요청으로 덮어쓰지 않음
-
             throw new ResponseStatusException(
-
                 HttpStatus.CONFLICT,
-
                 "이미 조치 완료된 알람입니다. 기존 조치내역을 확인해 주세요."
-
             );
 
 }
