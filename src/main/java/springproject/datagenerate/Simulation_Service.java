@@ -174,7 +174,7 @@ public class Simulation_Service {
     }
 
     // 화면에서 종료·재개한 결과도 생성기에 연결한다. 이미 전환한 실행은 무시한다.
-    public synchronized void connectCompletedProcess(springproject.model.dto.Process_execution_Finish_Dto result) {
+    public synchronized void connectCompletedProcess(Process_execution_Finish_Dto result) {
         if (result == null || result.getFinishedExecution() == null || executionId == null
             || !executionId.equals(result.getFinishedExecution().getExecution_id())) return;
         applyCompletion(result);
