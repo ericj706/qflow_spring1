@@ -4,6 +4,8 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import springproject.model.dto.page.Page_response;
 
 import java.util.Optional;
 import jakarta.servlet.http.HttpSession;
@@ -44,7 +46,7 @@ public class Anomaly_event_Service {
     private final Completed_action_notification_Repository completed_action_notification_Repository;
 
     // 전체조회 + 조건검색 + 페이징
-    public Page<Anomaly_event_Dto> search(
+    public Page_response<Anomaly_event_Dto> search(
             Anomaly_event_SearchDto searchDto,
             int page,
             HttpSession session) {
@@ -185,9 +187,24 @@ public class Anomaly_event_Service {
 
             );
 
-        // 페이지 정보를 유지하면서 Entity → DTO 변환
-
-        return result.map(Anomaly_event_Dto::from);
+        // 권한 제한과 검색조건을 그대로 적용하여 페이지 밖의 기록까지 집계한다.
+        List<Object[]> counts = anomaly_event_Repository.summarize(
+            startAt, endAtExclusive, severity, actionStatus, sourceType,
+            batchId, batchIdKeyword, processCode, anomalyType, userId);
+        long acknowledged = 0;
+        long unacknowledged = 0;
+        long completed = 0;
+        for (Object[] count : counts) {
+            long value = ((Number) count[1]).longValue();
+            if ("확인됨".equals(count[0])) acknowledged += value;
+            if ("조치완료".equals(count[0])) { acknowledged += value; completed += value; }
+            if ("미확인".equals(count[0])) unacknowledged += value;
+        }
+        return Page_response.from(result.map(Anomaly_event_Dto::from), Map.of(
+            "total", result.getTotalElements(),
+            "acknowledged", acknowledged,
+            "unacknowledged", unacknowledged,
+            "completed", completed));
 
     }
 
