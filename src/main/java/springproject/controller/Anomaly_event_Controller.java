@@ -54,7 +54,7 @@ public class Anomaly_event_Controller {
 
     @PatchMapping("/completed-notifications/{notificationId}/read")
     public ResponseEntity<Void> markCompletedNotificationAsRead(
-            @PathVariable Long notificationId,
+            @PathVariable(name = "notificationId") Long notificationId,
             HttpSession session) {
 
         anomaly_event_Service.markCompletedNotificationAsRead(
