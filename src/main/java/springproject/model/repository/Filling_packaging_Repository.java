@@ -218,12 +218,30 @@ public interface Filling_packaging_Repository extends JpaRepository<Filling_pack
             """)
     List<Filling_packaging_Entity> findByExecutionId(@Param("executionId") Long executionId);
 
-    // 공정 실행번호별 제품 목록 — 20개씩 페이지 조회
-    @Query("""
-            SELECT f
-            FROM Filling_packaging_Entity f
-            WHERE f.process_execution_Entity.execution_id = :executionId
-            """)
-    Page<Filling_packaging_Entity> findPageByExecutionId(@Param("executionId") Long executionId,Pageable pageable);
+    // 현재 실행의 제품 목록
+// 폐기 대기 → 폐기 완료된 불합격 → 나머지 제품 순서
+@Query("""
+        SELECT f
+        FROM Filling_packaging_Entity f
+        WHERE f.process_execution_Entity.execution_id = :executionId
+        ORDER BY
+            CASE
+                WHEN f.final_disposition = '불합격'
+                     AND (
+                         f.disposalStatus IS NULL
+                         OR f.disposalStatus <> '폐기완료'
+                     )
+                    THEN 0
+                WHEN f.final_disposition = '불합격'
+                    THEN 1
+                ELSE 2
+            END,
+            f.timestamp DESC,
+            f.pouch_id ASC
+        """)
+Page<Filling_packaging_Entity> findPageByExecutionId(
+        @Param("executionId") Long executionId,
+        Pageable pageable
+);
 
 }

@@ -538,15 +538,50 @@ public class Filling_packaging_Service {
         if (page < 0) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"페이지 번호는 0 이상이어야 합니다.");
         }
-        Pageable pageable = PageRequest.of(
-                page,
-                20,
-                Sort.by(Sort.Order.desc("timestamp"),Sort.Order.asc("pouch_id"))
-        );
+        Pageable pageable = PageRequest.of(page, 20);
 
         return filling_packaging_Repository
                 .findPageByExecutionId(executionId, pageable)
                 .map(Filling_packaging_Dto::from);
 }
 
+    // 공정 모니터링에 표시할 제품 검사·폐기 요약
+@Transactional(readOnly = true)
+public Map<String, Long> getExecutionSummary(Long executionId) {
+
+    if (executionId == null || executionId <= 0) {
+        throw new ResponseStatusException(
+                HttpStatus.BAD_REQUEST,
+                "올바른 공정 실행번호를 입력해 주세요."
+        );
+    }
+
+    List<Filling_packaging_Entity> products =
+            filling_packaging_Repository.findByExecutionId(executionId);
+
+    long passCount = 0;
+    long failCount = 0;
+    long disposalPendingCount = 0;
+
+    for (Filling_packaging_Entity product : products) {
+        if ("합격".equals(product.getFinal_disposition())) {
+            passCount++;
+        }
+
+        if ("불합격".equals(product.getFinal_disposition())) {
+            failCount++;
+
+            if (!"폐기완료".equals(product.getDisposalStatus())) {
+                disposalPendingCount++;
+            }
+        }
+    }
+
+    return Map.of(
+            "totalCount", (long) products.size(),
+            "passCount", passCount,
+            "failCount", failCount,
+            "disposalPendingCount", disposalPendingCount
+    );
+}
 }
