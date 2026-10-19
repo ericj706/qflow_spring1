@@ -15,6 +15,7 @@ import org.springframework.http.client.JdkClientHttpRequestFactory;
 import springproject.model.dto.Batches_Dto;
 import springproject.model.dto.Process_execution_Dto;
 import springproject.model.dto.Process_execution_Finish_Dto;
+import springproject.config.SimulationRequestAuth;
 
 @Component
 public class SimulationApiClient {
@@ -30,11 +31,12 @@ public class SimulationApiClient {
     }
     // 기존 REST API를 호출하는 클라이언트에 연결·응답 제한시간을 설정한다.
     public SimulationApiClient(RestClient.Builder builder,
-        @Value("${simulation.api-base-url:http://localhost:${server.port:8080}}") String baseUrl) {
+        @Value("${simulation.api-base-url:http://localhost:${server.port:8080}}") String baseUrl,
+        SimulationRequestAuth simulationAuth) {
         var http = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(5)).build();
         var factory = new JdkClientHttpRequestFactory(http);
         factory.setReadTimeout(Duration.ofSeconds(10));
-        api = builder.baseUrl(baseUrl).requestFactory(factory).build();
+        api = builder.baseUrl(baseUrl).requestFactory(factory).defaultHeaders(simulationAuth::addHeader).build();
     }
 
     // 원료 실측량 합계를 기존 LOT 수정 API로 반영한다.

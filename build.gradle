@@ -51,6 +51,14 @@ tasks.named('test') {
 	useJUnitPlatform()
 }
 
+// 실제 DB·Spring 서버를 시작하지 않는 관리자 권한 회귀 검증
+tasks.register('verifyAccessPolicy', JavaExec) {
+    dependsOn tasks.named('testClasses')
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'springproject.AccessPolicyCheck'
+    jvmArgs '-Dfile.encoding=UTF-8'
+}
+
 // 실제 DB를 변경하지 않는 생성기 REST 계약 테스트
 tasks.register('verifySimulationApi', JavaExec) {
     dependsOn tasks.named('testClasses')

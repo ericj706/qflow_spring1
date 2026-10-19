@@ -17,6 +17,8 @@ import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
 import springproject.model.dto.Users_Dto;
 import springproject.service.Users_Service;
+import springproject.config.ApiAccessPolicy;
+import jakarta.servlet.http.HttpServletRequest;
 
 @RestController 
 @RequiredArgsConstructor 
@@ -25,6 +27,7 @@ import springproject.service.Users_Service;
 public class Users_Controller {
 
     private final Users_Service us;
+    private final ApiAccessPolicy accessPolicy;
 
     // 전체조회
     @GetMapping("")
@@ -67,19 +70,9 @@ public class Users_Controller {
 
     // ── 현재 로그인된 사용자 확인 API ──
     @GetMapping("/me")
-    public ResponseEntity<?> getCurrentUser(HttpSession session) {
-        Integer userId = (Integer) session.getAttribute("LOGIN_USER_ID");
-        String userName = (String) session.getAttribute("LOGIN_USER_NAME");
-        String role = (String) session.getAttribute("LOGIN_USER_ROLE");
-
-        if (userId == null) {
-            return ResponseEntity.status(401).body("로그인되어 있지 않습니다.");
-        }
-
-        Map<String, String> userInfo = new HashMap<>();
-        userInfo.put("userName", userName);
-        userInfo.put("role", role);
-
-        return ResponseEntity.ok(userInfo);
+    public ResponseEntity<?> getCurrentUser(HttpServletRequest request) {
+        // 세션에 저장했던 역할이 아니라 DB의 최신 활성 상태·역할로 응답한다.
+        var user = accessPolicy.requireUser(request);
+        return ResponseEntity.ok(Map.of("userId", user.getUserId(), "userName", user.getUserName(), "role", user.getRole()));
     }
 }
